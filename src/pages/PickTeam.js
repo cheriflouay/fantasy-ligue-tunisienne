@@ -93,12 +93,11 @@ const TeamInfoBar = styled.div`
 `;
 
 
-function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, isInitialPick, onInitialSave }) {
+function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, isInitialPick, onInitialSave, currentUser }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
 
-    // Initial budget for a new user if it's the initial pick
     const initialBudget = 100.0;
     const maxPlayers = 15;
 
@@ -109,10 +108,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             ).filter(Boolean);
             setSelectedPlayers(initialSelection);
         } else if (!userData && allPlayers.length > 0 && isInitialPick) {
-            // This is for when userData might not be fully loaded or for a fresh start
             setSelectedPlayers([]);
-            // You might want to initialize budget here if userData is truly null
-            // but for now, we assume App.js passes initial userData
         }
     }, [userData, allPlayers, isInitialPick]);
 
@@ -156,37 +152,37 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             return;
         }
 
-        setSelectedPlayers(prev => [...prev, player]);
-        setUserData(prev => ({
-            ...prev,
-            players: [...prev.players, player.id],
-            // Convert to number using parseFloat after toFixed() for display
-            budget: parseFloat((prev.budget - player.cost).toFixed(1))
-        }));
+        const newPlayers = [...selectedPlayers, player];
+        setSelectedPlayers(newPlayers);
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
+            players: newPlayers.map(p => p.id),
+            budget: parseFloat((userData.budget - player.cost).toFixed(1))
+        });
     }, [selectedPlayers, userData, setUserData, isInitialPick, maxPlayers, initialBudget]);
 
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
-        setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
-        setUserData(prev => ({
-            ...prev,
-            players: prev.players.filter(id => id !== playerToRemove.id),
-            // Convert to number using parseFloat after toFixed() for display
-            budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
-        }));
-    }, [setUserData]);
+        const newPlayers = selectedPlayers.filter(p => p.id !== playerToRemove.id);
+        setSelectedPlayers(newPlayers);
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
+            players: newPlayers.map(p => p.id),
+            budget: parseFloat((userData.budget + playerToRemove.cost).toFixed(1))
+        });
+    }, [selectedPlayers, userData, setUserData]);
 
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
         const totalCost = newPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
         const newBudget = (initialBudget - totalCost).toFixed(1);
 
         setSelectedPlayers(newPlayers.filter(Boolean));
-        setUserData(prev => ({
-            ...prev,
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
             players: newPlayers.filter(Boolean).map(p => p.id),
-            budget: parseFloat(newBudget) // Convert back to number
-        }));
-    }, [initialBudget, setUserData]);
+            budget: parseFloat(newBudget)
+        });
+    }, [initialBudget, setUserData, userData]);
 
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPosition) => {
@@ -194,6 +190,8 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             handleAddPlayer(player);
         } else {
             console.log(`Player ${player.name} moved within squad to position ${targetPosition}.`);
+            // To implement actual swaps, you'd need to find `player` and `targetPlayer` in `selectedPlayers`
+            // and update their positions/swap them. This is out of scope for a quick fix for now.
         }
     }, [selectedPlayers, handleAddPlayer]);
 
@@ -209,20 +207,19 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             alert(`Please select exactly ${maxPlayers} players to save your initial team.`);
             return;
         }
-        // Ensure the budget displayed is the final budget after selection
         const finalBudget = userData ? userData.budget : initialBudget - selectedPlayers.reduce((sum, p) => sum + p.cost, 0);
 
-        onInitialSave(selectedPlayers, finalBudget);
+        onInitialSave(selectedPlayers, finalBudget); // This function is now responsible for saving to Firestore
     };
 
     const handleResetTeam = useCallback(() => {
         setSelectedPlayers([]);
-        setUserData(prev => ({
-            ...prev,
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
             players: [],
-            budget: initialBudget // Reset budget to initial
-        }));
-    }, [setUserData, initialBudget]);
+            budget: initialBudget
+        });
+    }, [setUserData, initialBudget, userData]);
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {

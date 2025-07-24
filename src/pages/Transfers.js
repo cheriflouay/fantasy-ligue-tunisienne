@@ -92,7 +92,7 @@ const TeamInfoBar = styled.div`
     }
 `;
 
-function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData }) {
+function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, currentUser }) { // Added currentUser
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
@@ -127,7 +127,6 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         setFilteredPlayers(currentPlayers);
     }, [allPlayers, filters]);
 
-    // handleAddPlayer must be declared before handlePlayerDrop
     const handleAddPlayer = useCallback((player) => {
         if (selectedPlayers.some(p => p.id === player.id)) {
             alert(`${player.name} is already in your squad.`);
@@ -146,32 +145,33 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
             return;
         }
 
-        setSelectedPlayers(prev => [...prev, player]);
-        setUserData(prev => ({
-            ...prev,
-            players: [...prev.players, player.id],
-            budget: parseFloat((prev.budget - player.cost).toFixed(1))
-        }));
+        const newPlayers = [...selectedPlayers, player];
+        setSelectedPlayers(newPlayers);
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
+            players: newPlayers.map(p => p.id),
+            budget: parseFloat((userData.budget - player.cost).toFixed(1))
+        });
     }, [selectedPlayers, userData, setUserData, maxPlayers, initialBudget]);
 
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
-        setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
-        setUserData(prev => ({
-            ...prev,
-            players: prev.players.filter(id => id !== playerToRemove.id),
-            budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
-        }));
-    }, [setUserData]);
+        const newPlayers = selectedPlayers.filter(p => p.id !== playerToRemove.id);
+        setSelectedPlayers(newPlayers);
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
+            players: newPlayers.map(p => p.id),
+            budget: parseFloat((userData.budget + playerToRemove.cost).toFixed(1))
+        });
+    }, [selectedPlayers, userData, setUserData]);
 
-    // handlePlayerDrop can now be declared as handleAddPlayer is defined
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPositionType) => {
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player);
         } else {
             console.log(`Transfer: Attempted to move or swap ${player.name}.`);
         }
-    }, [selectedPlayers, handleAddPlayer]); // handleAddPlayer is correctly a dependency here
+    }, [selectedPlayers, handleAddPlayer]);
 
 
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
@@ -179,21 +179,21 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         const newBudget = (initialBudget - totalCost).toFixed(1);
 
         setSelectedPlayers(newPlayers.filter(Boolean));
-        setUserData(prev => ({
-            ...prev,
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
             players: newPlayers.filter(Boolean).map(p => p.id),
             budget: parseFloat(newBudget)
-        }));
-    }, [initialBudget, setUserData]);
+        });
+    }, [initialBudget, setUserData, userData]);
 
     const handleResetTeam = useCallback(() => {
         setSelectedPlayers([]);
-        setUserData(prev => ({
-            ...prev,
+        setUserData({ // Call the parent's setUserData (which updates Firestore)
+            ...userData,
             players: [],
             budget: initialBudget
-        }));
-    }, [setUserData, initialBudget]);
+        });
+    }, [setUserData, initialBudget, userData]);
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {

@@ -21,7 +21,6 @@ const GlobalStyle = createGlobalStyle`
         margin: 0;
         font-family: 'Inter', sans-serif;
         background-color: var(--primary-green); /* Solid green background matching header */
-        /* Removed background-image from body */
         min-height: 100vh;
         display: flex;
         flex-direction: column;
@@ -56,6 +55,18 @@ const GlobalStyle = createGlobalStyle`
         background-color: var(--card-bg);
         border-radius: 8px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Styles for auth forms */
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
     }
 `;
 

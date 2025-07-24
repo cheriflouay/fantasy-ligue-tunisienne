@@ -43,7 +43,24 @@ const UserInfo = styled.div`
     }
 `;
 
-function Header({ userRank, userOverallPoints }) {
+const LogoutButton = styled.button`
+    background-color: var(--secondary-red);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+        background-color: #b30000;
+    }
+`;
+
+
+function Header({ userRank, userOverallPoints, onLogout }) { // Added onLogout prop
     return (
         <HeaderContainer>
             <LogoGroup>
@@ -58,6 +75,7 @@ function Header({ userRank, userOverallPoints }) {
                     Rank: <span>#{userRank}</span> | Points: <span>{userOverallPoints}</span>
                 </UserInfo>
             )}
+            {onLogout && <LogoutButton onClick={onLogout}>Logout</LogoutButton>} {/* Render logout button */}
         </HeaderContainer>
     );
 }
