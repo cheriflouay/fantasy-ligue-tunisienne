@@ -12,9 +12,17 @@ const PickTeamContainer = styled.div`
     display: flex;
     gap: 20px;
     padding: 20px;
-    max-width: 1200px;
+    max-width: 1200px; /* Default max-width for initial pick view */
     margin: 20px auto;
     flex-wrap: wrap;
+
+    /* MODIFIED: Adjust flex-direction and width based on isInitialPick for "My Team" view */
+    ${props => !props.isInitialPick && `
+        flex-direction: column; /* Stack content vertically for My Team view */
+        max-width: 1000px; /* MODIFIED: Increased max-width for the container in My Team view */
+        align-items: center; /* Center content */
+        padding: 10px; /* Reduced padding for My Team view to give more space */
+    `}
 
     @media (max-width: 768px) {
         flex-direction: column;
@@ -55,13 +63,25 @@ const PlayerList = styled.div`
 const TeamDisplayArea = styled.div`
     flex: 2;
     background-color: #ffffff;
-    padding: 20px;
+    padding: 20px; /* Default padding */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     position: sticky;
     top: 20px;
     align-self: flex-start;
     min-width: 400px;
+    /* REMOVED: display: flex; flex-direction: column; align-items: center; from here */
+
+
+    /* MODIFIED: Make it full width when isInitialPick is false */
+    ${props => !props.isInitialPick && `
+        flex: none; /* Disable flex growth */
+        width: 100%; /* Take full width */
+        max-width: 900px; /* MODIFIED: Increased max-width for pitch on larger screens */
+        padding: 15px; /* Slightly reduced padding for a tighter fit */
+        margin-top: 0; /* Remove top margin */
+        position: static; /* Remove sticky positioning */
+    `}
 
     @media (max-width: 768px) {
         flex: auto;
@@ -79,6 +99,8 @@ const TeamInfoBar = styled.div`
     padding: 10px 0;
     margin-bottom: 15px;
     border-bottom: 1px solid #eee;
+    width: 100%; /* Ensure it spans full width of its parent */
+
 
     p {
         margin: 0;
@@ -97,28 +119,31 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
+    const [captainId, setCaptainId] = useState(userData?.captainId || null);
+    const [viceCaptainId, setViceCaptainId] = useState(userData?.viceCaptainId || null);
 
-    const initialBudget = 100.0; // Base budget for calculations
+    const initialBudget = 100.0;
     const maxPlayers = 15;
+    const maxPlayersPerTeam = 3;
 
-    // Calculate current budget based on locally selected players
     const currentTeamCost = selectedPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
     const currentBudgetRemaining = (initialBudget - currentTeamCost).toFixed(1);
 
 
     useEffect(() => {
-        // This effect runs once on mount or when userData/allPlayers changes
-        // It initializes the local selectedPlayers state from the userData prop (from Firestore)
         if (userData && allPlayers.length > 0) {
             const initialSelection = userData.players.map(playerId =>
                 allPlayers.find(p => p.id === playerId)
             ).filter(Boolean);
             setSelectedPlayers(initialSelection);
+            setCaptainId(userData.captainId || null);
+            setViceCaptainId(userData.viceCaptainId || null);
         } else if (!userData && allPlayers.length > 0 && isInitialPick) {
-            // For a brand new user/session before any data is loaded
             setSelectedPlayers([]);
+            setCaptainId(null);
+            setViceCaptainId(null);
         }
-    }, [userData, allPlayers, isInitialPick]); // Depend on userData and allPlayers for initial sync
+    }, [userData, allPlayers, isInitialPick]);
 
     useEffect(() => {
         let currentPlayers = allPlayers;
@@ -148,42 +173,53 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             return;
         }
 
-        // Use the locally calculated budget for checks, not userData.budget directly
-        if (parseFloat(currentBudgetRemaining) < player.cost) { // Parse to float for comparison
+        const playersFromSameTeam = selectedPlayers.filter(p => p.team === player.team).length;
+        if (playersFromSameTeam >= maxPlayersPerTeam) {
+            alert(`You can only have a maximum of ${maxPlayersPerTeam} players from ${player.team}.`);
+            return;
+        }
+
+        if (parseFloat(currentBudgetRemaining) < player.cost) {
             alert(`Not enough budget to add ${player.name}. You need $${(player.cost - parseFloat(currentBudgetRemaining)).toFixed(1)}M more.`);
             return;
         }
 
-        // Only update local state, DO NOT call setUserData here
         setSelectedPlayers(prev => [...prev, player]);
 
-    }, [selectedPlayers, currentBudgetRemaining, maxPlayers]);
+    }, [selectedPlayers, currentBudgetRemaining, maxPlayers, maxPlayersPerTeam]);
 
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
-        // Only update local state, DO NOT call setUserData here
+        if (captainId === playerToRemove.id) {
+            setCaptainId(null);
+        }
+        if (viceCaptainId === playerToRemove.id) {
+            setViceCaptainId(null);
+        }
         setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
-    }, []); // Removed selectedPlayers from dependencies as it's used in functional update
+    }, [captainId, viceCaptainId]);
 
 
-    // This function is called by SelectedTeamDisplay's AutoPick/Reset
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
-        // Only update local state, DO NOT call setUserData here
-        setSelectedPlayers(newPlayers.filter(Boolean)); // Filter out nulls from auto-pick
-    }, []); // No dependencies related to userData here
+        setSelectedPlayers(newPlayers.filter(Boolean));
+        if (captainId && !newPlayers.some(p => p && p.id === captainId)) {
+            setCaptainId(null);
+        }
+        if (viceCaptainId && !newPlayers.some(p => p && p.id === viceCaptainId)) {
+            setViceCaptainId(null);
+        }
+    }, [captainId, viceCaptainId]);
+
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPosition) => {
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player);
         } else {
             console.log(`Player ${player.name} moved within squad to position ${targetPosition}.`);
-            // For actual swaps/repositions, you'd implement logic here that updates selectedPlayers
-            // based on the targetPlayer or targetPosition.
-            // Example for simple reposition (removes then re-adds, useEffect re-sorts):
             const filtered = selectedPlayers.filter(p => p.id !== player.id);
             setSelectedPlayers([...filtered, player]);
         }
-    }, [selectedPlayers, handleAddPlayer]); // Depend on selectedPlayers and handleAddPlayer
+    }, [selectedPlayers, handleAddPlayer]);
 
 
     const handlePositionFilterClick = useCallback((positionType) => {
@@ -193,22 +229,76 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
         }));
     }, []);
 
+    // New: Handle setting captain
+    const handleSetCaptain = useCallback((player) => {
+        if (!player) return;
+
+        const isPlayerInStartingXI = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id);
+
+        if (!isPlayerInStartingXI && !isInitialPick) {
+            alert("Only players in the starting XI can be Captain.");
+            return;
+        }
+
+        if (captainId === player.id) {
+            setCaptainId(null);
+        } else {
+            if (viceCaptainId === player.id) {
+                setViceCaptainId(null);
+            }
+            setCaptainId(player.id);
+        }
+    }, [captainId, viceCaptainId, selectedPlayers, isInitialPick]);
+
+    // New: Handle setting vice-captain
+    const handleSetViceCaptain = useCallback((player) => {
+        if (!player) return;
+
+        const isPlayerInStartingXI = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id);
+
+        if (!isPlayerInStartingXI && !isInitialPick) {
+            alert("Only players in the starting XI can be Vice-Captain.");
+            return;
+        }
+
+        if (viceCaptainId === player.id) {
+            setViceCaptainId(null);
+        } else {
+            if (captainId === player.id) {
+                setCaptainId(null);
+            }
+            setViceCaptainId(player.id);
+        }
+    }, [captainId, viceCaptainId, selectedPlayers, isInitialPick]);
+
+
     const handleSaveTeam = () => {
         if (selectedPlayers.length !== maxPlayers) {
             alert(`Please select exactly ${maxPlayers} players to save your initial team.`);
             return;
         }
-        // Calculate the final budget based on the current local selectedPlayers
         const finalBudget = (initialBudget - currentTeamCost).toFixed(1);
 
-        // Call the parent's onInitialSave, which will trigger Firestore update in App.js
         onInitialSave(selectedPlayers, finalBudget);
     };
 
+    const handleSaveLineupChanges = () => {
+        setUserData({
+            ...userData,
+            players: selectedPlayers.map(p => p.id),
+            captainId: captainId,
+            viceCaptainId: viceCaptainId,
+            budget: parseFloat(currentBudgetRemaining)
+        });
+        alert("Lineup changes saved!");
+    };
+
+
     const handleResetTeam = useCallback(() => {
-        // Only update local state, DO NOT call setUserData here
         setSelectedPlayers([]);
-    }, []); // No dependencies needed as it sets to empty array
+        setCaptainId(null);
+        setViceCaptainId(null);
+    }, []);
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
@@ -217,26 +307,27 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <PickTeamContainer>
-                <PlayerSelectionArea>
-                    <h2>{isInitialPick ? "Select Your Squad" : "Your Lineup"}</h2>
-                    {/* Display current local budget and player count */}
-                    <p>Budget: ${currentBudgetRemaining}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
-                    <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
-                    <PlayerList>
-                        {filteredPlayers.map(player => (
-                            <PlayerCard
-                                key={player.id}
-                                player={player}
-                                onAdd={() => handleAddPlayer(player)}
-                                isAdded={selectedPlayers.some(p => p.id === player.id)}
-                                isListView={true}
-                                allTeams={allTeams}
-                            />
-                        ))}
-                    </PlayerList>
-                </PlayerSelectionArea>
-                <TeamDisplayArea>
+            <PickTeamContainer isInitialPick={isInitialPick}> {/* Pass isInitialPick to styled component */}
+                {isInitialPick && ( // Conditionally render PlayerSelectionArea
+                    <PlayerSelectionArea>
+                        <h2>Select Your Squad</h2>
+                        <p>Budget: ${currentBudgetRemaining}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
+                        <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
+                        <PlayerList>
+                            {filteredPlayers.map(player => (
+                                <PlayerCard
+                                    key={player.id}
+                                    player={player}
+                                    onAdd={() => handleAddPlayer(player)}
+                                    isAdded={selectedPlayers.some(p => p.id === player.id)}
+                                    isListView={true}
+                                    allTeams={allTeams}
+                                />
+                            ))}
+                        </PlayerList>
+                    </PlayerSelectionArea>
+                )}
+                <TeamDisplayArea isInitialPick={isInitialPick}> {/* Pass isInitialPick to styled component */}
                     <TeamInfoBar>
                         <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
                         <p className="budget-display">Budget Remaining: ${currentBudgetRemaining}M</p>
@@ -248,13 +339,19 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
-                        budget={currentBudgetRemaining} // Pass the locally calculated budget
+                        budget={currentBudgetRemaining}
                         isInitialPick={isInitialPick}
                         onPositionClick={handlePositionFilterClick}
                         allAvailablePlayers={allPlayers}
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
                         onResetTeam={handleResetTeam}
+                        captainId={captainId}
+                        viceCaptainId={viceCaptainId}
+                        onSetCaptain={handleSetCaptain}
+                        onSetViceCaptain={handleSetViceCaptain}
                     />
+                    {/* BenchContainer and ButtonContainer are now rendered by SelectedTeamDisplay */}
+                    {/* Only render the "Save Initial Team" or "Save Lineup Changes" buttons here */}
                     {isInitialPick && (
                         <button
                             style={{
@@ -264,12 +361,11 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '5px',
-                                // Removed duplicate cursor property
                                 cursor: selectedPlayers.length === maxPlayers ? 'pointer' : 'not-allowed',
-                                opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5, // Visual feedback for button
+                                opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5,
                             }}
                             onClick={handleSaveTeam}
-                            disabled={selectedPlayers.length !== maxPlayers} // Disable if not 15 players
+                            disabled={selectedPlayers.length !== maxPlayers}
                         >
                             Save Initial Team
                         </button>
@@ -282,10 +378,10 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                                 backgroundColor: 'var(--primary-green)',
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '5px;',
+                                borderRadius: '5px',
                                 cursor: 'pointer'
                             }}
-                            onClick={() => console.log('Save lineup changes (captain, formation, etc.)')}
+                            onClick={handleSaveLineupChanges}
                         >
                             Save Lineup Changes
                         </button>

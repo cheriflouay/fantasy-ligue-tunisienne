@@ -3,7 +3,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useDrag } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faC, faV } from '@fortawesome/free-solid-svg-icons'; // Added faC and faV for Captain/Vice-Captain
 
 // Base styling for both card and list item
 const BaseCard = styled.div.withConfig({
@@ -22,6 +22,7 @@ const BaseCard = styled.div.withConfig({
     justify-content: space-between;
     font-size: 0.9em;
     transition: transform 0.2s ease-in-out;
+    position: relative; /* Needed for absolute positioning of C/VC indicators */
 
     &:hover {
         transform: translateY(-2px);
@@ -143,7 +144,66 @@ const ListItem = styled(BaseCard).withConfig({
     }
 `;
 
-function PlayerCard({ player, onAdd, isAdded, isListView, allTeams }) {
+const CaptainIndicator = styled.span`
+    position: absolute;
+    top: 5px;
+    right: 5px; /* Position at top-right */
+    background-color: #FFD700; /* Gold color */
+    color: #333;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+`;
+
+const ViceCaptainIndicator = styled.span`
+    position: absolute;
+    top: 5px;
+    right: 5px; /* Position at top-right, will be overwritten if Captain is present due to z-index */
+    background-color: #C0C0C0; /* Silver color */
+    color: #333;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    font-weight: bold;
+    z-index: 9; /* Lower z-index than Captain to allow Captain to appear on top */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+`;
+
+const PlayerActionButtons = styled.div`
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+`;
+
+const ActionButton = styled.button`
+    background-color: var(--primary-green);
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.75em;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: darken(var(--primary-green), 10%);
+    }
+
+    &:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+`;
+
+function PlayerCard({ player, onAdd, onRemove, isAdded, isListView, allTeams, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, canRemove = true }) {
     const [{ isDragging }, drag] = useDrag(() => ({
         type: 'player',
         item: { player },
@@ -184,16 +244,27 @@ function PlayerCard({ player, onAdd, isAdded, isListView, allTeams }) {
         );
     }
 
+    // Render for pitch/bench view (PlayerJersey context)
     return (
-        <BaseCard isAdded={isAdded}>
+        <BaseCard>
+            {isCaptain && <CaptainIndicator>C</CaptainIndicator>}
+            {!isCaptain && isViceCaptain && <ViceCaptainIndicator>VC</ViceCaptainIndicator>} {/* Only show VC if not Captain */}
+
             <h4>{player.name}</h4>
             <p>Team: <strong>{player.team}</strong></p>
             <p>Pos: <strong>{player.position}</strong></p>
             <p className="cost">Cost: ${player.cost}M</p>
             <p className="points">Pts: {player.totalPoints}</p>
-            <button onClick={onAdd} disabled={isAdded}>
-                {isAdded ? 'Added' : 'Add Player'}
-            </button>
+            
+            <PlayerActionButtons>
+                <ActionButton onClick={() => onSetCaptain(player)} disabled={isViceCaptain}>
+                    <FontAwesomeIcon icon={faC} /> {isCaptain ? '' : ''}
+                </ActionButton>
+                <ActionButton onClick={() => onSetViceCaptain(player)} disabled={isCaptain}>
+                    <FontAwesomeIcon icon={faV} /> {isViceCaptain ? '' : ''}
+                </ActionButton>
+                {canRemove && <ActionButton onClick={() => onRemove(player)}>Remove</ActionButton>}
+            </PlayerActionButtons>
         </BaseCard>
     );
 }

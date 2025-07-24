@@ -92,7 +92,7 @@ const TeamInfoBar = styled.div`
     }
 `;
 
-function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, currentUser }) {
+function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
@@ -145,25 +145,23 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, c
             return;
         }
 
-        const newPlayers = [...selectedPlayers, player];
-        setSelectedPlayers(newPlayers);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: newPlayers.map(p => p.id),
-            budget: parseFloat((userData.budget - player.cost).toFixed(1))
-        });
+        setSelectedPlayers(prev => [...prev, player]);
+        setUserData(prev => ({
+            ...prev,
+            players: [...prev.players, player.id],
+            budget: parseFloat((prev.budget - player.cost).toFixed(1))
+        }));
     }, [selectedPlayers, userData, setUserData, maxPlayers, initialBudget]);
 
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
-        const newPlayers = selectedPlayers.filter(p => p.id !== playerToRemove.id);
-        setSelectedPlayers(newPlayers);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: newPlayers.map(p => p.id),
-            budget: parseFloat((userData.budget + playerToRemove.cost).toFixed(1))
-        });
-    }, [selectedPlayers, userData, setUserData]);
+        setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
+        setUserData(prev => ({
+            ...prev,
+            players: prev.players.filter(id => id !== playerToRemove.id),
+            budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
+        }));
+    }, [setUserData]);
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPositionType) => {
         if (!selectedPlayers.some(p => p.id === player.id)) {
@@ -179,21 +177,21 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, c
         const newBudget = (initialBudget - totalCost).toFixed(1);
 
         setSelectedPlayers(newPlayers.filter(Boolean));
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
+        setUserData(prev => ({
+            ...prev,
             players: newPlayers.filter(Boolean).map(p => p.id),
             budget: parseFloat(newBudget)
-        });
-    }, [initialBudget, setUserData, userData]);
+        }));
+    }, [initialBudget, setUserData]);
 
     const handleResetTeam = useCallback(() => {
         setSelectedPlayers([]);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
+        setUserData(prev => ({
+            ...prev,
             players: [],
             budget: initialBudget
-        });
-    }, [setUserData, initialBudget, userData]);
+        }));
+    }, [setUserData, initialBudget]);
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
@@ -228,14 +226,15 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, c
 
                     <SelectedTeamDisplay
                         selectedPlayers={selectedPlayers}
-                        onRemove={handleRemovePlayer}
+                        onRemove={handleRemovePlayer} // Pass handleRemovePlayer
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
                         budget={userData.budget}
-                        isInitialPick={true}
+                        isInitialPick={true} // Transfers always show 15 players on pitch
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
                         onResetTeam={handleResetTeam}
+                        canRemove={true} // NEW: Always show remove button on Transfers page
                     />
                     <button style={{
                         marginTop: '20px',

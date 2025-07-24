@@ -1,6 +1,8 @@
 // src/pages/Login.js
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // Import FontAwesomeIcon
+import { faGoogle } from '@fortawesome/free-brands-svg-icons'; // Import Google icon
 
 const AuthContainer = styled.div`
     display: flex;
@@ -50,6 +52,10 @@ const AuthBox = styled.div`
         font-weight: bold;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        display: flex; /* For icon and text alignment */
+        align-items: center;
+        justify-content: center;
+        gap: 10px; /* Space between icon and text */
 
         &:hover {
             background-color: #b30000;
@@ -58,9 +64,17 @@ const AuthBox = styled.div`
             background-color: #cccccc;
             cursor: not-allowed;
         }
+
+        &.google-button {
+            background-color: #DB4437; /* Google Red */
+            margin-top: 10px; /* Space from email login button */
+            &:hover {
+                background-color: #c23321;
+            }
+        }
     }
 
-    .link-button { /* Style for button acting as a link */
+    .link-button {
         background: none;
         border: none;
         color: var(--primary-green);
@@ -80,7 +94,7 @@ const AuthBox = styled.div`
     p {
         margin-top: 20px;
         color: var(--medium-text);
-        a { /* Keep existing a style for external links if any, but use button for internal navigation */
+        a {
             color: var(--primary-green);
             text-decoration: none;
             font-weight: bold;
@@ -97,7 +111,7 @@ const AuthBox = styled.div`
     }
 `;
 
-function Login({ onLogin, setActivePage }) {
+function Login({ onLogin, setActivePage, onGoogleLogin }) { // Added onGoogleLogin prop
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -110,6 +124,16 @@ function Login({ onLogin, setActivePage }) {
         const result = await onLogin(email, password);
         if (!result.success) {
             setError(result.message || 'Login failed. Please check your credentials.');
+        }
+        setLoading(false);
+    };
+
+    const handleGoogleSubmit = async () => {
+        setError('');
+        setLoading(true);
+        const result = await onGoogleLogin(); // Call the new Google login handler
+        if (!result.success) {
+            setError(result.message || 'Google login failed.');
         }
         setLoading(false);
     };
@@ -134,9 +158,15 @@ function Login({ onLogin, setActivePage }) {
                         required
                     />
                     <button type="submit" disabled={loading}>
-                        {loading ? 'Logging In...' : 'Login'}
+                        {loading ? 'Logging In...' : 'Login with Email'}
                     </button>
                 </form>
+
+                <button className="google-button" onClick={handleGoogleSubmit} disabled={loading}>
+                    <FontAwesomeIcon icon={faGoogle} />
+                    {loading ? 'Signing In...' : 'Sign in with Google'}
+                </button>
+
                 {error && <p className="error-message">{error}</p>}
                 <p>
                     Don't have an account?{' '}

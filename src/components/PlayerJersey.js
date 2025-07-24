@@ -3,12 +3,11 @@ import React, { useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes, faC, faV } from '@fortawesome/free-solid-svg-icons';
 
 const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop filtering
-  shouldForwardProp: (prop) => // Removed defaultValidatorFn from arguments
-    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage'].includes(prop)
-    // Removed defaultValidatorFn(prop) call
+  shouldForwardProp: (prop) =>
+    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage', 'isCaptain', 'isViceCaptain', 'isInitialPick'].includes(prop) // Added isInitialPick
 })`
     background-color: transparent;
     border-radius: 8px;
@@ -18,15 +17,48 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    width: 95px; /* Keep width consistent */
-    height: 120px; /* Increased height to accommodate text below jersey */
+    width: 95px; /* Default width for initial pick */
+    height: 120px; /* Default height for initial pick */
     cursor: ${props => props.isEmpty ? 'pointer' : 'grab'};
     position: relative;
     opacity: ${props => props.isDragging ? 0.5 : 1};
     transition: all 0.2s ease-in-out;
     font-family: 'Inter', sans-serif;
-    overflow: hidden;
+    overflow: visible; /* Set overflow to visible to prevent clipping */
     box-sizing: border-box; /* Include padding in width/height */
+
+    /* MODIFIED: Larger size for My Team page (when isInitialPick is false) */
+    ${props => !props.isInitialPick && `
+        width: 110px; /* Increased width for My Team view */
+        height: 140px; /* Increased height for My Team view */
+
+        .jersey-image-bg {
+            background-size: 90%; /* Make jersey image slightly bigger */
+        }
+        .team-abbr, .player-cost {
+            font-size: 0.75em; /* Slightly larger text */
+            padding: 3px 6px;
+        }
+        .player-name {
+            font-size: 0.85em; /* Slightly larger text */
+        }
+        .player-fixtures {
+            font-size: 0.7em; /* Slightly larger text */
+        }
+        /* Adjust badge/button sizes for larger jerseys */
+        .captain-badge, .vice-captain-badge { /* Removed remove-button from this selector */
+            width: 32px;
+            height: 32px;
+            font-size: 1.1em;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+        }
+        .captaincy-buttons button {
+            font-size: 0.7em;
+            padding: 4px 10px;
+        }
+    `}
 
 
     /* Empty slot styling */
@@ -136,34 +168,46 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
 
     .remove-button {
         position: absolute;
-        top: -10px; /* Adjust to move further outside */
-        left: -10px; /* Adjust to move further outside */
-        background-color: var(--danger-red); /* Use defined danger red */
+        top: -8px; /* MODIFIED: Adjusted top for smaller size */
+        left: -8px; /* MODIFIED: Adjusted left for smaller size */
+        background-color: #FF6347;
         color: white;
-        border: 2px solid #ffffff; /* White border for clarity */
-        border-radius: 50%; /* Make it a circle */
-        width: 28px; /* Increased size */
-        height: 28px; /* Increased size */
-        font-size: 1em; /* Adjust icon size */
+        border: none;
+        border-radius: 50%;
+        width: 24px; /* MODIFIED: Smaller width */
+        height: 24px; /* MODIFIED: Smaller height */
+        font-size: 0.9em; /* MODIFIED: Smaller X icon */
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        z-index: 10; /* Ensure it's on top */
+        z-index: 10;
         font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Add a subtle shadow */
-        transition: background-color 0.2s ease, transform 0.2s ease;
+        box-shadow:
+            0 1.5px 0 rgba(178, 34, 34, 0.5), /* Adjusted shadow for smaller size */
+            0 3px 6px rgba(0, 0, 0, 0.2),
+            inset 0 0.5px 0 rgba(255, 255, 255, 0.5),
+            inset 0 -1.5px 0 rgba(178, 34, 34, 0.8);
+        transition: all 0.1s ease-out;
 
         &:hover {
-            background-color: #a00000; /* Darker red on hover */
-            transform: scale(1.1); /* Slightly enlarge on hover */
+            background-color: #E05637;
+            transform: scale(1.05);
+        }
+        &:active {
+            transform: translateY(1px);
+            box-shadow:
+                0 0.5px 0 rgba(178, 34, 34, 0.5),
+                0 1px 2px rgba(0, 0, 0, 0.1),
+                inset 0 0px 0 rgba(255, 255, 255, 0.5),
+                inset 0 -0.5px 0 rgba(178, 34, 34, 0.8);
         }
     }
 
     /* Styling for bench players */
-    ${props => props.isBench && `
+    ${props => props.isBench && props.isInitialPick && ` /* Only apply smaller bench styles during initial pick */
         width: 85px;
-        height: 110px; /* Adjusted height for bench players too */
+        height: 110px;
         .jersey-image-bg {
             background-size: 70%;
             background-position: center top;
@@ -178,17 +222,82 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
         .player-fixtures {
             font-size: 0.55em;
         }
-        .remove-button {
-            top: -8px;
-            left: -8px; /* Adjusted for bench */
-            width: 24px;
-            height: 24px;
-            font-size: 0.7em;
-        }
+        /* No specific remove button size override for bench here, default smaller size will apply */
+        /* If you need a different size for bench remove button, define it here */
     `}
 `;
 
-function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures }) {
+const CaptainBadge = styled.div`
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: #FFD700; /* Gold color for Captain */
+    color: #333;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 0.8em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+`;
+
+const ViceCaptainBadge = styled(CaptainBadge)`
+    background-color: #A9A9A9; /* Darker silver for Vice-Captain */
+    color: white;
+`;
+
+const CaptaincyButtons = styled.div`
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding-bottom: 5px;
+    z-index: 10;
+    background-color: rgba(0,0,0,0.6); /* Semi-transparent background */
+    border-radius: 0 0 8px 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+
+    ${JerseyContainer}:hover & {
+        opacity: 1;
+    }
+
+    button {
+        background-color: rgba(255,255,255,0.2);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.4);
+        border-radius: 4px;
+        padding: 3px 8px;
+        font-size: 0.6em;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+            background-color: rgba(255,255,255,0.4);
+        }
+        &.active {
+            background-color: #FFD700;
+            color: #333;
+            font-weight: bold;
+        }
+        &.vc-active {
+            background-color: #A9A9A9;
+            color: white;
+            font-weight: bold;
+        }
+    }
+`;
+
+
+function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove }) {
     const itemType = 'player';
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -202,11 +311,9 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
     const [{ isOver }, drop] = useDrop(() => ({
         accept: itemType,
         drop: (draggedItem) => {
-            if (draggedItem.player.id === player?.id) return; // Prevent dropping player onto themselves
+            if (draggedItem.player.id === player?.id) return;
 
-            // When dropping onto an existing player, it's a swap intent.
-            // When dropping onto an empty slot (player is null), it's a move to that slot.
-            onMovePlayer(draggedItem.player, player, position); // Pass target player (or null) and position
+            onMovePlayer(draggedItem.player, player, position);
         },
         collect: (monitor) => ({
             isOver: monitor.isOver(),
@@ -220,16 +327,13 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
         drag(drop(node));
     }, [drag, drop]);
 
-    // Extract first name and optionally the second name
     const displayName = useMemo(() => {
         if (!player) return '';
         const nameParts = player.name.split(' ');
         if (nameParts.length > 1) {
-            // If there's a second name, combine first and second.
-            // This will display "First Second" for "First Second Last"
-            return `${nameParts[0]} ${nameParts[1]}`;
+            return `${nameParts[0]} ${nameParts[1]}`; // First and second name
         }
-        return nameParts[0]; // Only one name part, use it directly
+        return nameParts[0];
     }, [player]);
 
 
@@ -242,11 +346,11 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
             isBench={isBench}
             jerseyImage={jerseySrc}
             onClick={() => {
-                // Only trigger onPositionClick if it's an empty slot
                 if (!player) {
                     onPositionClick(position);
                 }
             }}
+            isInitialPick={isInitialPick} // Pass isInitialPick to styled component
         >
             {player ? (
                 <>
@@ -256,16 +360,37 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                             <span className="team-abbr">{teamDetails?.shortName || player.team}</span>
                             <span className="player-cost">${player.cost.toFixed(1)}</span>
                         </div>
-                        {/* Player name and fixtures are now below the jersey image area */}
-                        <span className="player-name">{displayName}</span> {/* Display first and second name */}
-                        <span className="player-fixtures">{playerFixtures}</span> {/* Display dynamic fixture */}
-                        <button className="remove-button" onClick={() => onRemove(player)}>
-                            <FontAwesomeIcon icon={faTimes} />
-                        </button>
+                        <span className="player-name">{displayName}</span>
+                        <span className="player-fixtures">{playerFixtures}</span>
+                        {canRemove && ( // Conditionally render remove button
+                            <button className="remove-button" onClick={() => onRemove(player)}>
+                                <FontAwesomeIcon icon={faTimes} />
+                            </button>
+                        )}
+
+                        {isCaptain && <CaptainBadge><FontAwesomeIcon icon={faC} /></CaptainBadge>}
+                        {isViceCaptain && <ViceCaptainBadge><FontAwesomeIcon icon={faV} /></ViceCaptainBadge>}
+
+                        {/* Captaincy buttons only visible for non-bench players when not initial pick */}
+                        {player && !isBench && !isInitialPick && (
+                            <CaptaincyButtons>
+                                <button
+                                    className={isCaptain ? 'active' : ''}
+                                    onClick={(e) => { e.stopPropagation(); onSetCaptain(player); }}
+                                >
+                                    C
+                                </button>
+                                <button
+                                    className={isViceCaptain ? 'vc-active' : ''}
+                                    onClick={(e) => { e.stopPropagation(); onSetViceCaptain(player); }}
+                                >
+                                    VC
+                                </button>
+                            </CaptaincyButtons>
+                        )}
                     </div>
                 </>
             ) : (
-                // Empty slot content
                 <>
                     <span className="slot-position-abbr">{
                         position === 'Goalkeeper' ? 'GKP' :

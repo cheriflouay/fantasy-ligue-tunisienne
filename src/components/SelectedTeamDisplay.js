@@ -9,29 +9,28 @@ import { faPlus } from '@fortawesome/free-solid-svg-icons';
 const PitchContainer = styled.div`
   background-color: #008000; /* Dark green for the pitch */
   border-radius: 10px;
-  padding: 15px;
+  padding: 10px; /* MODIFIED: Reduced padding for more internal space */
   margin-top: 0;
   position: relative;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 3; /* MODIFIED: Changed aspect ratio to be wider than tall */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  min-height: 600px; /* Increased height */
+  min-height: 280px; /* MODIFIED: Further reduced min-height for maximum compactness */
   overflow: hidden;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   border: 4px solid white; /* Outer pitch lines */
 
   @media (max-width: 768px) {
-    min-height: 500px;
-    padding: 10px;
+    min-height: 250px; /* Adjusted for smaller screens too */
+    padding: 8px; /* Reduced padding for smaller screens */
   }
 `;
 
 const PitchLine = styled.div.withConfig({
-  shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
+  shouldForwardProp: (prop) =>
     !['top', 'bottom'].includes(prop)
-    // No defaultValidatorFn call here
 })`
   background-color: white;
   position: absolute;
@@ -66,7 +65,7 @@ const CenterSpot = styled(PitchLine)`
 
 const PenaltyArea = styled(PitchLine)`
   width: 80%;
-  height: 160px; /* Adjusted height for better proportion */
+  height: 80px; /* MODIFIED: Further reduced height for penalty area */
   border: 2px solid white;
   background-color: transparent;
   left: 50%;
@@ -77,7 +76,7 @@ const PenaltyArea = styled(PitchLine)`
 
 const GoalArea = styled(PitchLine)`
   width: 40%;
-  height: 60px; /* Adjusted height */
+  height: 20px; /* MODIFIED: Further reduced height for goal area */
   border: 2px solid white;
   background-color: transparent;
   left: 50%;
@@ -92,8 +91,8 @@ const PenaltySpot = styled(PitchLine)`
   border-radius: 50%;
   left: 50%;
   transform: translateX(-50%);
-  ${props => props.top && 'top: 100px;'} /* Position relative to top of pitch */
-  ${props => props.bottom && 'bottom: 100px;'} /* Position relative to bottom of pitch */
+  ${props => props.top && 'top: 50px;'} /* MODIFIED: Adjusted position relative to new penalty area height */
+  ${props => props.bottom && 'bottom: 50px;'} /* MODIFIED: Adjusted position relative to new penalty area height */
 `;
 
 const Goal = styled(PitchLine)`
@@ -118,10 +117,10 @@ const PositionRow = styled.div`
   z-index: 2; /* Ensure players are above pitch lines */
 
   /* Adjusted margins for the new "upside down" visual order */
-  &.goalkeeper-row { margin-top: 50px; } /* Goalkeeper at the very top of the display, inside goal area */
-  &.defender-row { margin-top: 60px; } /* Defenders below Goalkeepers */
-  &.midfielder-row { margin-top: 60px; } /* Midfielders below Defenders */
-  &.forward-row { margin-top: 60px; } /* Forwards at the bottom of the display */
+  &.goalkeeper-row { margin-top: 5px; } /* MODIFIED: Significantly reduced margin-top for GKP */
+  &.defender-row { margin-top: 5px; } /* MODIFIED: Keep margins small */
+  &.midfielder-row { margin-top: 5px; } /* MODIFIED: Keep margins small */
+  &.forward-row { margin-top: 5px; } /* MODIFIED: Keep margins small */
 `;
 
 const EmptySlot = styled.div`
@@ -164,8 +163,9 @@ const BenchContainer = styled.div`
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   padding: 15px;
-  margin-top: 20px;
-  width: 100%;
+  margin-top: 15px; /* MODIFIED: Reduced margin from pitch */
+  width: 96%;
+  max-width: 900px; /* Match the pitch's max-width for alignment */
   text-align: center;
   border: 1px solid #ddd;
 
@@ -187,7 +187,7 @@ const ButtonContainer = styled.div`
   display: flex;
   justify-content: center; /* Ensures buttons are centered horizontally */
   gap: 20px;
-  margin-top: 30px; /* Space from the team display or bench */
+  margin-top: 20px; /* MODIFIED: Reduced margin from bench/pitch */
   width: 100%;
   max-width: 600px; /* Limit width for better appearance */
   margin-left: auto; /* Center the container */
@@ -263,7 +263,7 @@ const shuffleArray = (array) => {
 };
 
 
-function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, allAvailablePlayers, onUpdateSelectedPlayers, onResetTeam }) {
+function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, allAvailablePlayers, onUpdateSelectedPlayers, onResetTeam, captainId, viceCaptainId, onSetCaptain, onSetViceCaptain, canRemove = true }) { // Added canRemove prop
   const [startingXI, setStartingXI] = useState({
     Goalkeeper: [],
     Defender: [],
@@ -283,6 +283,8 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
 
   const regularFormationSlots = useMemo(() => ({
     Goalkeeper: 1,
+    // MODIFIED: For My Team view, ensure 11 players on pitch (1 GKP, 4 DEF, 4 MID, 2 FWD)
+    // The rest (4) go to the bench.
     Defender: 4,
     Midfielder: 4,
     Forward: 2,
@@ -538,6 +540,12 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               allTeams={allTeams}
               onPositionClick={onPositionClick}
               playerFixtures={player ? getNextFixtureForTeam(player.team) : null} // Pass fixture
+              isCaptain={player && captainId === player.id} // Pass isCaptain prop
+              isViceCaptain={player && viceCaptainId === player.id} // Pass isViceCaptain prop
+              onSetCaptain={onSetCaptain} // Pass handler
+              onSetViceCaptain={onSetViceCaptain} // Pass handler
+              isInitialPick={isInitialPick} // Pass isInitialPick
+              canRemove={canRemove} // Pass canRemove prop
             />
           ))}
         </PositionRow>
@@ -554,6 +562,12 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               allTeams={allTeams}
               onPositionClick={onPositionClick}
               playerFixtures={player ? getNextFixtureForTeam(player.team) : null} // Pass fixture
+              isCaptain={player && captainId === player.id}
+              isViceCaptain={player && viceCaptainId === player.id}
+              onSetCaptain={onSetCaptain}
+              onSetViceCaptain={onSetViceCaptain}
+              isInitialPick={isInitialPick}
+              canRemove={canRemove} // Pass canRemove prop
             />
           ))}
         </PositionRow>
@@ -570,6 +584,12 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               allTeams={allTeams}
               onPositionClick={onPositionClick}
               playerFixtures={player ? getNextFixtureForTeam(player.team) : null} // Pass fixture
+              isCaptain={player && captainId === player.id}
+              isViceCaptain={player && viceCaptainId === player.id}
+              onSetCaptain={onSetCaptain}
+              onSetViceCaptain={onSetViceCaptain}
+              isInitialPick={isInitialPick}
+              canRemove={canRemove} // Pass canRemove prop
             />
           ))}
         </PositionRow>
@@ -586,6 +606,12 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               allTeams={allTeams}
               onPositionClick={onPositionClick}
               playerFixtures={player ? getNextFixtureForTeam(player.team) : null} // Pass fixture
+              isCaptain={player && captainId === player.id}
+              isViceCaptain={player && viceCaptainId === player.id}
+              onSetCaptain={onSetCaptain}
+              onSetViceCaptain={onSetViceCaptain}
+              isInitialPick={isInitialPick}
+              canRemove={canRemove} // Pass canRemove prop
             />
           ))}
         </PositionRow>
@@ -613,6 +639,12 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                 isBench={true}
                 onPositionClick={onPositionClick}
                 playerFixtures={player ? getNextFixtureForTeam(player.team) : null} // Pass fixture
+                isCaptain={player && captainId === player.id}
+                isViceCaptain={player && viceCaptainId === player.id}
+                onSetCaptain={onSetCaptain}
+                onSetViceCaptain={onSetViceCaptain}
+                isInitialPick={isInitialPick}
+                canRemove={canRemove} // Pass canRemove prop
               />
             ))}
           </div>

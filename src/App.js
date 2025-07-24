@@ -18,7 +18,9 @@ import {
     onAuthStateChanged,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    signOut
+    signOut,
+    GoogleAuthProvider,
+    signInWithPopup
 } from 'firebase/auth';
 import {
     getFirestore,
@@ -34,7 +36,7 @@ import mockTeamsData from './data/clubs.json';
 import mockFixturesData from './data/fixtures.json';
 
 function App() {
-    const [activePage, setActivePage] = useState('login'); // Initial activePage is 'login'
+    const [activePage, setActivePage] = useState('login');
     const [userData, setUserData] = useState(null);
     const [allPlayers, setAllPlayers] = useState([]);
     const [allTeams, setAllTeams] = useState([]);
@@ -45,10 +47,10 @@ function App() {
 
     // Firebase states
     const [currentUser, setCurrentUser] = useState(null);
-    const [authReady, setAuthReady] = useState(false); // Indicates if onAuthStateChanged has run once
+    const [authReady, setAuthReady] = useState(false);
     const [db, setDb] = useState(null);
     const [auth, setAuth] = useState(null);
-    const [loadingAuth, setLoadingAuth] = useState(true); // Loading state for initial auth check
+    const [loadingAuth, setLoadingAuth] = useState(true);
 
     const localAppId = 'fantasy-ligue-tunisienne-local';
     const localFirebaseConfig = useMemo(() => ({
@@ -88,12 +90,13 @@ function App() {
                 setUserRank(fetchedData.overallRank || 'N/A');
 
             } else {
+                // Document does not exist, create initial user data
                 const initialData = {
                     teamName: "My Team",
                     budget: 100.0,
                     players: [], // Initially empty
-                    captainId: null,
-                    viceCaptainId: null,
+                    captainId: null, // NEW: Initialize captainId
+                    viceCaptainId: null, // NEW: Initialize viceCaptainId
                     gameweekPoints: 0,
                     totalOverallPoints: 0,
                     overallRank: 'N/A'
@@ -101,8 +104,8 @@ function App() {
                 setDoc(userDocRef, initialData)
                     .then(() => {
                         setUserData(initialData);
-                        setIsInitialTeamSaved(false); // No team saved yet
-                        setActivePage('pickTeamInitial'); // Direct to pick team
+                        setIsInitialTeamSaved(false);
+                        setActivePage('pickTeamInitial');
                     })
                     .catch(error => console.error("Error creating initial user data:", error));
             }
@@ -186,14 +189,13 @@ function App() {
     const handleSignUp = useCallback(async (email, password, teamName) => {
         if (!auth) return { success: false, message: "Authentication service not ready." };
         try {
-            await createUserWithEmailAndPassword(auth, email, password); // Removed userCredential destructuring
-            // Initial data will be created by fetchUserData via onSnapshot
+            await createUserWithEmailAndPassword(auth, email, password);
             return { success: true };
         } catch (error) {
             console.error("Sign up error:", error);
             return { success: false, message: error.message };
         }
-    }, [auth]); // Removed unnecessary currentAppId and db from dependencies
+    }, [auth]);
 
     const handleLogin = useCallback(async (email, password) => {
         if (!auth) return { success: false, message: "Authentication service not ready." };
@@ -206,12 +208,34 @@ function App() {
         }
     }, [auth]);
 
+    const handleGoogleLogin = useCallback(async () => {
+        if (!auth) return { success: false, message: "Authentication service not ready." };
+        const provider = new GoogleAuthProvider();
+        try {
+            await signInWithPopup(auth, provider);
+            return { success: true };
+        } catch (error) {
+            console.error("Google login error:", error);
+            let errorMessage = "Google login failed.";
+            if (error.code === 'auth/popup-closed-by-user') {
+                errorMessage = "Google login cancelled.";
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                errorMessage = "Login already in progress. Please try again.";
+            } else if (error.code === 'auth/account-exists-with-different-credential') {
+                errorMessage = "An account with this email already exists. Try logging in with email/password.";
+            }
+            return { success: false, message: errorMessage };
+        }
+    }, [auth]);
+
+
     const handleLogout = useCallback(async () => {
         if (!auth) return;
         try {
             await signOut(auth);
             setActivePage('login');
-        } catch (error) {
+        }
+        catch (error) {
             console.error("Logout error:", error);
         }
     }, [auth]);
@@ -227,6 +251,8 @@ function App() {
             await setDoc(userDocRef, {
                 players: squadPlayers.map(p => p.id),
                 budget: parseFloat(finalBudget),
+                // Captain and Vice-Captain are NOT saved during initial team pick
+                // They will be saved with 'Save Lineup Changes'
             }, { merge: true });
             setIsInitialTeamSaved(true);
             setActivePage('dashboard');
@@ -247,7 +273,7 @@ function App() {
                 case 'signup':
                     return <SignUp onSignUp={handleSignUp} setActivePage={setActivePage} />;
                 default:
-                    return <Login onLogin={handleLogin} setActivePage={setActivePage} />;
+                    return <Login onLogin={handleLogin} setActivePage={setActivePage} onGoogleLogin={handleGoogleLogin} />;
             }
         }
 
