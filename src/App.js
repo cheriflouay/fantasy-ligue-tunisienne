@@ -36,7 +36,8 @@ import mockTeamsData from './data/clubs.json';
 import mockFixturesData from './data/fixtures.json';
 
 function App() {
-    const [activePage, setActivePage] = useState('pickTeamInitial');
+    // MODIFIED: Initial activePage is 'login'
+    const [activePage, setActivePage] = useState('login');
     const [userData, setUserData] = useState(null);
     const [allPlayers, setAllPlayers] = useState([]);
     const [allTeams, setAllTeams] = useState([]);
@@ -52,11 +53,8 @@ function App() {
     const [auth, setAuth] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
 
-    // --- IMPORTANT: Local Fallback for Canvas Environment Variables ---
-    // These variables are provided by the Canvas environment.
-    // For local development, provide fallback values by checking window object.
-    const localAppId = 'fantasy-ligue-tunisienne-local'; // A unique ID for your local app data
-    const localFirebaseConfig = useMemo(() => ({ // Wrapped in useMemo for stability
+    const localAppId = 'fantasy-ligue-tunisienne-local';
+    const localFirebaseConfig = useMemo(() => ({
         apiKey: "AIzaSyA1-ZN4ltO9Clx36V1A6DqiGAVRamt2RNA",
         authDomain: "fantasy-ligue-tunisienne-42148.firebaseapp.com",
         projectId: "fantasy-ligue-tunisienne-42148",
@@ -64,18 +62,16 @@ function App() {
         messagingSenderId: "434834511318",
         appId: "1:434834511318:web:5827cad8c8d0fe48044077",
         measurementId: "G-4K0QS7092Y"
-    }), []); // Empty dependency array means it's created once
+    }), []);
 
-    const localInitialAuthToken = null; // No custom token for local dev, use email/password or anonymous
+    const localInitialAuthToken = null;
 
-    // Determine actual values, preferring Canvas globals if they exist on the window object
     const currentAppId = typeof window !== 'undefined' && typeof window.__app_id !== 'undefined' ? window.__app_id : localAppId;
     const currentFirebaseConfig = typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : localFirebaseConfig;
     const currentInitialAuthToken = typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : localInitialAuthToken;
-    // --- END LOCAL FALLBACK ---
 
 
-    // Function to fetch user data from Firestore - MOVED TO TOP for initialization order
+    // Function to fetch user data from Firestore
     const fetchUserData = useCallback(async (uid, dbInstance) => {
         if (!dbInstance || !uid) return;
 
@@ -86,11 +82,9 @@ function App() {
                 const fetchedData = docSnap.data();
                 setUserData(fetchedData);
 
-                // Determine if initial team is saved based on players array length (must be 15)
                 const hasSavedTeam = fetchedData.players && fetchedData.players.length === 15;
                 setIsInitialTeamSaved(hasSavedTeam);
 
-                // Set active page based on whether the full initial team is saved
                 if (hasSavedTeam) {
                     setActivePage('dashboard');
                 } else {
@@ -100,11 +94,10 @@ function App() {
                 setUserRank(fetchedData.overallRank || 'N/A');
 
             } else {
-                // Document does not exist, create initial user data
                 const initialData = {
                     teamName: "My Team",
                     budget: 100.0,
-                    players: [], // Initially empty
+                    players: [],
                     captainId: null,
                     viceCaptainId: null,
                     gameweekPoints: 0,
@@ -114,8 +107,8 @@ function App() {
                 setDoc(userDocRef, initialData)
                     .then(() => {
                         setUserData(initialData);
-                        setIsInitialTeamSaved(false); // No team saved yet
-                        setActivePage('pickTeamInitial'); // Direct to pick team
+                        setIsInitialTeamSaved(false);
+                        setActivePage('pickTeamInitial');
                     })
                     .catch(error => console.error("Error creating initial user data:", error));
             }
@@ -125,12 +118,11 @@ function App() {
         });
 
         return unsubscribe;
-    }, [currentAppId, setActivePage]); // Dependencies for fetchUserData
+    }, [currentAppId, setActivePage]);
 
 
-    // Firebase Initialization - NOW AFTER fetchUserData
+    // Firebase Initialization
     useEffect(() => {
-        // Only attempt Firebase initialization if in a browser environment
         if (typeof window === 'undefined') {
             console.warn("Skipping Firebase initialization: Not in a browser environment.");
             setLoadingAuth(false);
@@ -148,10 +140,11 @@ function App() {
             const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
                 if (user) {
                     setCurrentUser(user);
-                    await fetchUserData(user.uid, dbInstance); // fetchUserData is now defined
+                    await fetchUserData(user.uid, dbInstance);
                 } else {
                     setCurrentUser(null);
                     setUserData(null);
+                    setActivePage('login'); // Ensure it goes to login on logout/no user
                 }
                 setAuthReady(true);
                 setLoadingAuth(false);
@@ -174,10 +167,10 @@ function App() {
             console.error("Firebase initialization failed:", error);
             setLoadingAuth(false);
         }
-    }, [currentFirebaseConfig, currentInitialAuthToken, fetchUserData]); // Dependencies for Firebase init
+    }, [currentFirebaseConfig, currentInitialAuthToken, fetchUserData]);
 
 
-    // Load static data (players, teams, fixtures)
+    // Load static data
     useEffect(() => {
         setAllPlayers(mockPlayersData);
         setAllTeams(mockTeamsData);
@@ -239,7 +232,7 @@ function App() {
         if (!auth) return;
         try {
             await signOut(auth);
-            setActivePage('login');
+            setActivePage('login'); // Redirect to login page after logout
         } catch (error) {
             console.error("Logout error:", error);
         }
@@ -257,8 +250,8 @@ function App() {
                 players: squadPlayers.map(p => p.id),
                 budget: parseFloat(finalBudget),
             }, { merge: true });
-            setIsInitialTeamSaved(true); // Explicitly set to true after saving 15 players
-            setActivePage('dashboard'); // Navigate to dashboard after successful save
+            setIsInitialTeamSaved(true);
+            setActivePage('dashboard');
         } catch (error) {
             console.error("Error saving initial team:", error);
             alert("Failed to save team. Please try again.");
@@ -267,24 +260,27 @@ function App() {
 
 
     const renderPage = () => {
-        if (loadingAuth || !authReady || !db) {
+        // Show loading screen until auth and core data are ready
+        if (loadingAuth || !authReady || !db || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
             return <div style={{ textAlign: 'center', padding: '50px', fontSize: '1.5em', color: 'white' }}>Loading application...</div>;
         }
 
+        // If no user is logged in, always show Login/SignUp
         if (!currentUser) {
             switch (activePage) {
                 case 'signup':
                     return <SignUp onSignUp={handleSignUp} setActivePage={setActivePage} />;
-                default:
+                default: // Default to login if activePage is not 'signup'
                     return <Login onLogin={handleLogin} setActivePage={setActivePage} />;
             }
         }
 
-        if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
-            return <div style={{ textAlign: 'center', padding: '50px', fontSize: '1.5em', color: 'white' }}>Loading user data and game assets...</div>;
+        // If user is logged in, but userData is still null (e.g., first fetch after login)
+        if (!userData) {
+            return <div style={{ textAlign: 'center', padding: '50px', fontSize: '1.5em', color: 'white' }}>Loading user data...</div>;
         }
 
-        // Main routing logic after user is authenticated and data is loaded
+        // Main routing logic after user is authenticated and all data is loaded
         if (!isInitialTeamSaved) {
             // If initial team is NOT saved (i.e., players.length < 15), force to PickTeamInitial
             return (
@@ -343,7 +339,7 @@ function App() {
     return (
         <>
             <GlobalStyle />
-            {currentUser && (
+            {currentUser && ( // Only show header and navigation if logged in
                 <>
                     <Header userRank={userRank} userOverallPoints={userOverallPoints} onLogout={handleLogout} />
                     <Navigation
