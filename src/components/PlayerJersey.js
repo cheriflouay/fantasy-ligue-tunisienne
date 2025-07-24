@@ -5,11 +5,11 @@ import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-const JerseyContainer = styled.div.withConfig({
-    shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
-      !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage'].includes(prop)
-      // No defaultValidatorFn call here
-  })`
+const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop filtering
+  shouldForwardProp: (prop) => // Removed defaultValidatorFn from arguments
+    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage'].includes(prop)
+    // Removed defaultValidatorFn(prop) call
+})`
     background-color: transparent;
     border-radius: 8px;
     padding: 0;
@@ -220,13 +220,14 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
         drag(drop(node));
     }, [drag, drop]);
 
-    // Extract first name and optionally the last name
+    // Extract first name and optionally the second name
     const displayName = useMemo(() => {
         if (!player) return '';
         const nameParts = player.name.split(' ');
         if (nameParts.length > 1) {
-            // Take first name and last name. If there are middle names, they are omitted.
-            return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+            // If there's a second name, combine first and second.
+            // This will display "First Second" for "First Second Last"
+            return `${nameParts[0]} ${nameParts[1]}`;
         }
         return nameParts[0]; // Only one name part, use it directly
     }, [player]);
@@ -256,8 +257,8 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                             <span className="player-cost">${player.cost.toFixed(1)}</span>
                         </div>
                         {/* Player name and fixtures are now below the jersey image area */}
-                        <span className="player-name">{displayName}</span>
-                        <span className="player-fixtures">{playerFixtures}</span>
+                        <span className="player-name">{displayName}</span> {/* Display first and second name */}
+                        <span className="player-fixtures">{playerFixtures}</span> {/* Display dynamic fixture */}
                         <button className="remove-button" onClick={() => onRemove(player)}>
                             <FontAwesomeIcon icon={faTimes} />
                         </button>
