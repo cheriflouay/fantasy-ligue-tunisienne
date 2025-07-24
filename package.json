@@ -47,8 +47,9 @@
     ]
   },
   "devDependencies": {
-    "customize-cra": "^1.0.0",
     "gh-pages": "^3.2.3",
+    "babel-plugin-styled-components": "^1.13.2",
+    "customize-cra": "^1.0.0",
     "react-app-rewired": "^2.2.1"
   }
 }
