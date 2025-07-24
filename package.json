@@ -1,7 +1,6 @@
 {
   "name": "fantasy-ligue-tunisienne",
   "version": "0.1.0",
-  "homepage": "https://cheriflouay.github.io/fantasy-ligue-tunisienne",
   "private": true,
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
