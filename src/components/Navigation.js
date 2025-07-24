@@ -3,7 +3,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 const NavContainer = styled.nav`
-    background-color: #CC0000; /* Tunisian Flag Red */
+    background-color: var(--secondary-red); /* Use defined red */
     padding: 10px 0;
     ul {
         list-style: none;
@@ -40,12 +40,9 @@ function Navigation({ setActivePage, activePage, isInitialTeamSaved }) {
         <NavContainer>
             <ul>
                 <li><button className={activePage === 'dashboard' ? 'active' : ''} onClick={() => setActivePage('dashboard')}>Dashboard</button></li>
-                {/* Conditional rendering for team management */}
                 {!isInitialTeamSaved ? (
-                    // Initial pick phase
                     <li><button className={activePage === 'pickTeamInitial' ? 'active' : ''} onClick={() => setActivePage('pickTeamInitial')}>Pick Team</button></li>
                 ) : (
-                    // After initial pick, show My Team and Transfers
                     <>
                         <li><button className={activePage === 'myTeam' ? 'active' : ''} onClick={() => setActivePage('myTeam')}>My Team</button></li>
                         <li><button className={activePage === 'transfers' ? 'active' : ''} onClick={() => setActivePage('transfers')}>Transfers</button></li>

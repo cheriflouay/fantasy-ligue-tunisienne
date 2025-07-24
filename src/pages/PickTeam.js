@@ -93,10 +93,14 @@ const TeamInfoBar = styled.div`
 `;
 
 
-function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, onInitialSave }) {
+function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, isInitialPick, onInitialSave }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
+
+    // Initial budget for a new user if it's the initial pick
+    const initialBudget = 100.0;
+    const maxPlayers = 15;
 
     useEffect(() => {
         if (userData && allPlayers.length > 0) {
@@ -104,8 +108,13 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
                 allPlayers.find(p => p.id === playerId)
             ).filter(Boolean);
             setSelectedPlayers(initialSelection);
+        } else if (!userData && allPlayers.length > 0 && isInitialPick) {
+            // This is for when userData might not be fully loaded or for a fresh start
+            setSelectedPlayers([]);
+            // You might want to initialize budget here if userData is truly null
+            // but for now, we assume App.js passes initial userData
         }
-    }, [userData, allPlayers]);
+    }, [userData, allPlayers, isInitialPick]);
 
     useEffect(() => {
         let currentPlayers = allPlayers;
@@ -126,17 +135,24 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
 
     const handleAddPlayer = useCallback((player) => {
         if (selectedPlayers.some(p => p.id === player.id)) {
-            console.warn(`${player.name} is already in your squad.`);
+            alert(`${player.name} is already in your squad.`);
             return;
         }
 
-        if (selectedPlayers.length >= 15) {
-            console.warn('Squad is full! Maximum 15 players allowed.');
+        if (isInitialPick && selectedPlayers.length >= maxPlayers) {
+            alert('Squad is full! Maximum 15 players allowed for initial selection.');
             return;
         }
 
-        if (userData.budget < player.cost) {
-            console.warn(`Not enough budget to add ${player.name}.`);
+        if (!isInitialPick && selectedPlayers.length >= maxPlayers) {
+             alert('Squad is full! Maximum 15 players allowed in total squad.');
+             return;
+        }
+
+        const currentBudget = userData ? userData.budget : initialBudget;
+
+        if (currentBudget < player.cost) {
+            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - currentBudget).toFixed(1)}M more.`);
             return;
         }
 
@@ -144,22 +160,40 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
         setUserData(prev => ({
             ...prev,
             players: [...prev.players, player.id],
-            budget: prev.budget - player.cost
+            // Convert to number using parseFloat after toFixed() for display
+            budget: parseFloat((prev.budget - player.cost).toFixed(1))
         }));
-    }, [selectedPlayers, userData, setUserData]);
+    }, [selectedPlayers, userData, setUserData, isInitialPick, maxPlayers, initialBudget]);
+
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
         setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
         setUserData(prev => ({
             ...prev,
             players: prev.players.filter(id => id !== playerToRemove.id),
-            budget: prev.budget + playerToRemove.cost
+            // Convert to number using parseFloat after toFixed() for display
+            budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
         }));
     }, [setUserData]);
+
+    const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
+        const totalCost = newPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
+        const newBudget = (initialBudget - totalCost).toFixed(1);
+
+        setSelectedPlayers(newPlayers.filter(Boolean));
+        setUserData(prev => ({
+            ...prev,
+            players: newPlayers.filter(Boolean).map(p => p.id),
+            budget: parseFloat(newBudget) // Convert back to number
+        }));
+    }, [initialBudget, setUserData]);
+
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPosition) => {
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player);
+        } else {
+            console.log(`Player ${player.name} moved within squad to position ${targetPosition}.`);
         }
     }, [selectedPlayers, handleAddPlayer]);
 
@@ -170,17 +204,28 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
         }));
     }, []);
 
-
     const handleSaveTeam = () => {
-        if (selectedPlayers.length !== 15) {
-            alert('Please select exactly 15 players to save your initial team.');
+        if (selectedPlayers.length !== maxPlayers) {
+            alert(`Please select exactly ${maxPlayers} players to save your initial team.`);
             return;
         }
-        onInitialSave(selectedPlayers);
+        // Ensure the budget displayed is the final budget after selection
+        const finalBudget = userData ? userData.budget : initialBudget - selectedPlayers.reduce((sum, p) => sum + p.cost, 0);
+
+        onInitialSave(selectedPlayers, finalBudget);
     };
 
+    const handleResetTeam = useCallback(() => {
+        setSelectedPlayers([]);
+        setUserData(prev => ({
+            ...prev,
+            players: [],
+            budget: initialBudget // Reset budget to initial
+        }));
+    }, [setUserData, initialBudget]);
 
-    if (!userData || allPlayers.length === 0 || allTeams.length === 0) {
+
+    if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
         return <PickTeamContainer>Loading player data...</PickTeamContainer>;
     }
 
@@ -189,9 +234,7 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
             <PickTeamContainer>
                 <PlayerSelectionArea>
                     <h2>{isInitialPick ? "Select Your Squad" : "Your Lineup"}</h2>
-                    {isInitialPick && (
-                        <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/15</p>
-                    )}
+                    <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
                     <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
                     <PlayerList>
                         {filteredPlayers.map(player => (
@@ -208,7 +251,7 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
                 </PlayerSelectionArea>
                 <TeamDisplayArea>
                     <TeamInfoBar>
-                        <p>Your Squad ({selectedPlayers.length}/15)</p>
+                        <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
                         <p className="budget-display">Budget Remaining: ${userData.budget.toFixed(1)}M</p>
                     </TeamInfoBar>
 
@@ -216,17 +259,21 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
                         selectedPlayers={selectedPlayers}
                         onRemove={handleRemovePlayer}
                         allTeams={allTeams}
+                        allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
                         budget={userData.budget}
                         isInitialPick={isInitialPick}
-                        onPositionClick={handlePositionFilterClick} // Pass new prop
+                        onPositionClick={handlePositionFilterClick}
+                        allAvailablePlayers={allPlayers}
+                        onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
+                        onResetTeam={handleResetTeam}
                     />
-                    {isInitialPick && selectedPlayers.length === 15 && (
+                    {isInitialPick && selectedPlayers.length === maxPlayers && (
                         <button
                             style={{
                                 marginTop: '20px',
                                 padding: '10px 20px',
-                                backgroundColor: '#008000',
+                                backgroundColor: 'var(--primary-green)',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '5px',
@@ -242,7 +289,7 @@ function PickTeam({ userData, allPlayers, allTeams, setUserData, isInitialPick, 
                             style={{
                                 marginTop: '20px',
                                 padding: '10px 20px',
-                                backgroundColor: '#008000',
+                                backgroundColor: 'var(--primary-green)',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '5px',

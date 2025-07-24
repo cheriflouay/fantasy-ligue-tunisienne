@@ -3,7 +3,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 const HeaderContainer = styled.header`
-    background-color: #008000; /* Tunisian Flag Green */
+    background-color: var(--primary-green); /* Use defined green */
     color: white;
     padding: 15px 20px;
     text-align: center;
@@ -11,16 +11,31 @@ const HeaderContainer = styled.header`
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
 `;
 
-const Logo = styled.h1`
+const LogoGroup = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 15px;
+`;
+
+const AppLogo = styled.h1`
     margin: 0;
     font-size: 1.8em;
     font-family: 'Arial Black', sans-serif;
     letter-spacing: 1px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 `;
 
-// UserInfo styled component definition
+const OrgLogo = styled.img`
+    height: 40px;
+    object-fit: contain;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+`;
+
 const UserInfo = styled.div`
     font-size: 1.1em;
     span {
@@ -31,8 +46,13 @@ const UserInfo = styled.div`
 function Header({ userRank, userOverallPoints }) {
     return (
         <HeaderContainer>
-            <Logo>Fantasy Ligue Tunisienne 🇹🇳</Logo>
-            {/* This block is now UNCOMMENTED to use UserInfo */}
+            <LogoGroup>
+                <OrgLogo src={`${process.env.PUBLIC_URL}/images/flt_logo.png`} alt="Fantasy Ligue Tunisienne Logo" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/40x40/cccccc/000000?text=FLT" }} />
+                <AppLogo>Fantasy Ligue Tunisienne 🇹🇳</AppLogo>
+            </LogoGroup>
+
+            <OrgLogo src={`${process.env.PUBLIC_URL}/images/ftf_logo.png`} alt="Tunisian Football Federation Logo" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/40x40/cccccc/000000?text=FTF" }} />
+
             {userRank && userOverallPoints && (
                 <UserInfo>
                     Rank: <span>#{userRank}</span> | Points: <span>{userOverallPoints}</span>

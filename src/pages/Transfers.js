@@ -92,13 +92,15 @@ const TeamInfoBar = styled.div`
     }
 `;
 
-function Transfers({ userData, allPlayers, allTeams, setUserData }) {
-    // Transfers always manage the full 15-player squad
+function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
 
-    // Initialize selectedPlayers from userData when component mounts or data changes
+    const initialBudget = 100.0;
+    const maxPlayers = 15;
+
+
     useEffect(() => {
         if (userData && allPlayers.length > 0) {
             const initialSelection = userData.players.map(playerId =>
@@ -108,7 +110,6 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
         }
     }, [userData, allPlayers]);
 
-    // Apply filters to allPlayers to get filteredPlayers
     useEffect(() => {
         let currentPlayers = allPlayers;
 
@@ -126,22 +127,22 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
         setFilteredPlayers(currentPlayers);
     }, [allPlayers, filters]);
 
-    // Callback for adding a player to the squad (during transfers)
+    // handleAddPlayer must be declared before handlePlayerDrop
     const handleAddPlayer = useCallback((player) => {
-        // Logic for adding players during transfers (can involve buying/selling)
-        // For simplicity, we'll just add if less than 15, and manage budget
         if (selectedPlayers.some(p => p.id === player.id)) {
-            console.warn(`${player.name} is already in your squad.`);
+            alert(`${player.name} is already in your squad.`);
             return;
         }
 
-        if (selectedPlayers.length >= 15) {
-            console.warn('Squad is full! Maximum 15 players allowed.');
+        if (selectedPlayers.length >= maxPlayers) {
+            alert('Squad is full! Maximum 15 players allowed.');
             return;
         }
 
-        if (userData.budget < player.cost) {
-            console.warn(`Not enough budget to add ${player.name}.`);
+        const currentBudget = userData ? userData.budget : initialBudget;
+
+        if (currentBudget < player.cost) {
+            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - currentBudget).toFixed(1)}M more.`);
             return;
         }
 
@@ -149,33 +150,53 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
         setUserData(prev => ({
             ...prev,
             players: [...prev.players, player.id],
-            budget: prev.budget - player.cost
+            budget: parseFloat((prev.budget - player.cost).toFixed(1))
         }));
-    }, [selectedPlayers, userData, setUserData]);
+    }, [selectedPlayers, userData, setUserData, maxPlayers, initialBudget]);
 
-    // Callback for removing a player from the squad (during transfers)
+
     const handleRemovePlayer = useCallback((playerToRemove) => {
         setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
         setUserData(prev => ({
             ...prev,
             players: prev.players.filter(id => id !== playerToRemove.id),
-            budget: prev.budget + playerToRemove.cost
+            budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
         }));
     }, [setUserData]);
 
-    // This handler manages adding/removing/moving players within the squad
+    // handlePlayerDrop can now be declared as handleAddPlayer is defined
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPositionType) => {
-        // If player is being dragged from the list to an empty slot on pitch/bench
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player);
         } else {
-            // This is where more complex swap logic would go for transfers
             console.log(`Transfer: Attempted to move or swap ${player.name}.`);
         }
-    }, [selectedPlayers, handleAddPlayer]);
+    }, [selectedPlayers, handleAddPlayer]); // handleAddPlayer is correctly a dependency here
 
 
-    if (!userData || allPlayers.length === 0 || allTeams.length === 0) {
+    const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
+        const totalCost = newPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
+        const newBudget = (initialBudget - totalCost).toFixed(1);
+
+        setSelectedPlayers(newPlayers.filter(Boolean));
+        setUserData(prev => ({
+            ...prev,
+            players: newPlayers.filter(Boolean).map(p => p.id),
+            budget: parseFloat(newBudget)
+        }));
+    }, [initialBudget, setUserData]);
+
+    const handleResetTeam = useCallback(() => {
+        setSelectedPlayers([]);
+        setUserData(prev => ({
+            ...prev,
+            players: [],
+            budget: initialBudget
+        }));
+    }, [setUserData, initialBudget]);
+
+
+    if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
         return <TransfersContainer>Loading transfer data...</TransfersContainer>;
     }
 
@@ -184,7 +205,7 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
             <TransfersContainer>
                 <PlayerSelectionArea>
                     <h2>Transfer Players</h2>
-                    <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/15</p>
+                    <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
                     <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
                     <PlayerList>
                         {filteredPlayers.map(player => (
@@ -201,7 +222,7 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
                 </PlayerSelectionArea>
                 <TeamDisplayArea>
                     <TeamInfoBar>
-                        <p>Your Squad ({selectedPlayers.length}/15)</p>
+                        <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
                         <p className="budget-display">Budget Remaining: ${userData.budget.toFixed(1)}M</p>
                     </TeamInfoBar>
 
@@ -209,9 +230,12 @@ function Transfers({ userData, allPlayers, allTeams, setUserData }) {
                         selectedPlayers={selectedPlayers}
                         onRemove={handleRemovePlayer}
                         allTeams={allTeams}
+                        allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
                         budget={userData.budget}
-                        isInitialPick={true} // Transfers always show 15 players on pitch
+                        isInitialPick={true}
+                        onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
+                        onResetTeam={handleResetTeam}
                     />
                     <button style={{
                         marginTop: '20px',

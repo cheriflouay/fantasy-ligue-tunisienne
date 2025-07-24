@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
-import PickTeam from './pages/PickTeam'; // This will be the "My Team" view (11 + bench)
-import Transfers from './pages/Transfers'; // New: This will be the "Transfers" view (all 15 on pitch)
+import PickTeam from './pages/PickTeam';
+import Transfers from './pages/Transfers';
 import Fixtures from './pages/Fixtures';
 import Standings from './pages/Standings';
 import PlayerDetails from './pages/PlayerDetails';
@@ -13,25 +13,27 @@ import GlobalStyle from './styles/GlobalStyle';
 // Import your JSON data
 import mockPlayersData from './data/players.json';
 import mockTeamsData from './data/clubs.json';
+import mockFixturesData from './data/fixtures.json'; // Assuming you'll create this file from Fixtures.js mock data
 
 function App() {
-    const [activePage, setActivePage] = useState('pickTeamInitial'); // Start on initial team selection
+    const [activePage, setActivePage] = useState('pickTeamInitial');
     const [userData, setUserData] = useState(null);
     const [allPlayers, setAllPlayers] = useState([]);
     const [allTeams, setAllTeams] = useState([]);
+    const [allFixtures, setAllFixtures] = useState([]); // New state for fixtures
     const [userOverallPoints, setUserOverallPoints] = useState(0);
     const [userRank, setUserRank] = useState(0);
-    // New state to track if the initial 15-player team has been saved
     const [isInitialTeamSaved, setIsInitialTeamSaved] = useState(false);
 
     useEffect(() => {
         setAllPlayers(mockPlayersData);
         setAllTeams(mockTeamsData);
+        setAllFixtures(mockFixturesData); // Load mock fixtures
 
         const mockUserData = {
             teamName: "My Tunisian XI",
-            budget: 100.0,
-            players: [], // Initially empty
+            budget: 100.0, // Starting budget
+            players: [], // Initially empty player IDs
             captainId: null,
             viceCaptainId: null,
             gameweekPoints: 0,
@@ -45,57 +47,57 @@ function App() {
     }, []);
 
     // Function to handle the initial team save
-    const handleInitialTeamSave = (squadPlayers) => {
-        // Here you would typically save the squadPlayers to a backend
-        // For now, we'll update userData and set the flag
+    const handleInitialTeamSave = (squadPlayers, finalBudget) => {
         setUserData(prev => ({
             ...prev,
-            players: squadPlayers.map(p => p.id) // Save only IDs
+            players: squadPlayers.map(p => p.id), // Save only IDs
+            budget: parseFloat(finalBudget) // Update final budget
         }));
         setIsInitialTeamSaved(true);
-        setActivePage('dashboard'); // Redirect to dashboard after initial save
+        setActivePage('dashboard');
     };
 
     const renderPage = () => {
-        // If initial team is not saved, force user to PickTeamInitial
         if (!isInitialTeamSaved) {
             return (
                 <PickTeam
                     userData={userData}
                     allPlayers={allPlayers}
                     allTeams={allTeams}
+                    allFixtures={allFixtures} // Pass allFixtures
                     setUserData={setUserData}
-                    isInitialPick={true} // Indicate this is the initial 15-player pick
-                    onInitialSave={handleInitialTeamSave} // Pass the save handler
+                    isInitialPick={true}
+                    onInitialSave={handleInitialTeamSave}
                 />
             );
         }
 
-        // After initial team is saved, allow navigation to other pages
         switch (activePage) {
             case 'dashboard':
                 return <Dashboard userData={userData} />;
-            case 'myTeam': // New page for viewing 11 + bench
+            case 'myTeam':
                 return (
                     <PickTeam
                         userData={userData}
                         allPlayers={allPlayers}
                         allTeams={allTeams}
+                        allFixtures={allFixtures} // Pass allFixtures
                         setUserData={setUserData}
-                        isInitialPick={false} // Not initial pick, so show 11 + bench
+                        isInitialPick={false}
                     />
                 );
-            case 'transfers': // New page for managing 15 players
+            case 'transfers':
                 return (
                     <Transfers
                         userData={userData}
                         allPlayers={allPlayers}
                         allTeams={allTeams}
+                        allFixtures={allFixtures} // Pass allFixtures
                         setUserData={setUserData}
                     />
                 );
             case 'fixtures':
-                return <Fixtures allTeams={allTeams} />;
+                return <Fixtures allTeams={allTeams} allFixtures={allFixtures} />; // Pass allFixtures
             case 'standings':
                 return <Standings allTeams={allTeams} />;
             case 'playerDetails':
@@ -112,7 +114,7 @@ function App() {
             <Navigation
                 setActivePage={setActivePage}
                 activePage={activePage}
-                isInitialTeamSaved={isInitialTeamSaved} // Pass to Navigation
+                isInitialTeamSaved={isInitialTeamSaved}
             />
             <main>
                 {renderPage()}

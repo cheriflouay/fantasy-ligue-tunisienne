@@ -2,13 +2,13 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useDrag } from 'react-dnd';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; // For plus icon
-import { faPlus } from '@fortawesome/free-solid-svg-icons'; // For plus icon
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
 // Base styling for both card and list item
 const BaseCard = styled.div`
-    background-color: #f0f8ff; /* Light Blue */
-    border: 1px solid #ddd;
+    background-color: var(--card-bg); /* Use defined card background */
+    border: 1px solid var(--border-color); /* Use defined border color */
     border-radius: 8px;
     padding: 10px;
     text-align: center;
@@ -24,20 +24,20 @@ const BaseCard = styled.div`
     }
 
     h4 {
+        color: var(--dark-text); /* Use defined dark text */
         margin: 5px 0;
-        color: #333;
     }
     p {
         margin: 3px 0;
-        color: #555;
+        color: var(--medium-text); /* Use defined medium text */
     }
     .cost {
         font-weight: bold;
-        color: #CC0000;
+        color: var(--danger-red); /* Use defined danger red */
     }
     .points {
         font-weight: bold;
-        color: #008000;
+        color: var(--success-green); /* Use defined success green */
     }
 `;
 
@@ -73,7 +73,7 @@ const ListItem = styled(BaseCard)`
 
     .player-name {
         font-weight: bold;
-        color: #333;
+        color: var(--dark-text); /* Use defined dark text */
         margin-bottom: 2px;
         white-space: nowrap;
         overflow: hidden;
@@ -82,7 +82,7 @@ const ListItem = styled(BaseCard)`
 
     .player-team-pos {
         font-size: 0.8em;
-        color: #555;
+        color: var(--medium-text); /* Use defined medium text */
     }
 
     .player-stats {
@@ -100,38 +100,37 @@ const ListItem = styled(BaseCard)`
         font-size: 0.8em;
     }
     .stat-label {
-        color: #777;
+        color: var(--medium-text); /* Use defined medium text */
         font-size: 0.7em;
     }
     .stat-value {
         font-weight: bold;
-        color: #333;
+        color: var(--dark-text); /* Use defined dark text */
     }
     .cost .stat-value {
-        color: #CC0000;
+        color: var(--danger-red); /* Use defined danger red */
     }
     .points .stat-value {
-        color: #008000;
+        color: var(--success-green); /* Use defined success green */
     }
 
-    /* Styling for the circular add button */
     .add-button-circle {
-        background-color: ${props => props.isAdded ? '#ccc' : '#008000'};
+        background-color: ${props => props.isAdded ? 'var(--border-color)' : 'var(--primary-green)'}; /* Use defined colors */
         color: white;
         border: none;
-        border-radius: 50%; /* Make it circular */
-        width: 30px; /* Fixed width */
-        height: 30px; /* Fixed height */
-        font-size: 1.2em; /* Adjusted font size for plus icon */
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 1.2em;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: ${props => props.isAdded ? 'not-allowed' : 'pointer'};
         transition: background-color 0.2s ease;
-        flex-shrink: 0; /* Prevent button from shrinking */
+        flex-shrink: 0;
 
         &:hover {
-            background-color: ${props => props.isAdded ? '#ccc' : '#006600'};
+            background-color: ${props => props.isAdded ? 'var(--border-color)' : 'darken(var(--primary-green), 10%)'}; /* Darken on hover */
         }
     }
 `;
@@ -170,15 +169,13 @@ function PlayerCard({ player, onAdd, isAdded, isListView, allTeams }) {
                         <span className="stat-value">{player.totalPoints}</span>
                     </div>
                 </div>
-                {/* Re-added the circular add button */}
                 <button className="add-button-circle" onClick={onAdd} disabled={isAdded}>
-                    {isAdded ? <FontAwesomeIcon icon={faPlus} rotation={90} /> : <FontAwesomeIcon icon={faPlus} />} {/* Checkmark for added, plus for not added */}
+                    {isAdded ? <FontAwesomeIcon icon={faPlus} rotation={90} /> : <FontAwesomeIcon icon={faPlus} />}
                 </button>
             </ListItem>
         );
     }
 
-    // Default card view (unchanged)
     return (
         <BaseCard isAdded={isAdded}>
             <h4>{player.name}</h4>

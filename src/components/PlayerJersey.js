@@ -1,5 +1,5 @@
 // src/components/PlayerJersey.js
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,14 +14,16 @@ const JerseyContainer = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    width: 95px;
-    height: 100px;
+    width: 95px; /* Keep width consistent */
+    height: 120px; /* Increased height to accommodate text below jersey */
     cursor: ${props => props.isEmpty ? 'pointer' : 'grab'};
     position: relative;
     opacity: ${props => props.isDragging ? 0.5 : 1};
     transition: all 0.2s ease-in-out;
     font-family: 'Inter', sans-serif;
     overflow: hidden;
+    box-sizing: border-box; /* Include padding in width/height */
+
 
     /* Empty slot styling */
     ${props => props.isEmpty && `
@@ -59,10 +61,10 @@ const JerseyContainer = styled.div`
         top: 0;
         left: 0;
         width: 100%;
-        height: 100%;
+        height: 70%; /* Occupy top 70% for jersey image */
         background-image: url(${props => props.jerseyImage});
-        background-size: 80%;
-        background-position: center 10px;
+        background-size: 80%; /* Adjust size to fit */
+        background-position: center top; /* Position at the top */
         background-repeat: no-repeat;
         z-index: 1;
     }
@@ -73,7 +75,6 @@ const JerseyContainer = styled.div`
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: space-between;
         width: 100%;
         height: 100%;
         padding: 5px;
@@ -86,7 +87,7 @@ const JerseyContainer = styled.div`
         align-items: center;
         width: 100%;
         padding: 0 5px;
-        margin-bottom: auto;
+        margin-bottom: auto; /* Pushes content below to the bottom */
     }
 
     .team-abbr {
@@ -118,72 +119,50 @@ const JerseyContainer = styled.div`
         max-width: 90%;
         color: #ffffff;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        margin-top: auto;
+        margin-top: auto; /* Pushes name to the bottom of the jersey content area */
+        margin-bottom: 2px; /* Space between name and fixtures */
     }
 
     .player-fixtures {
         font-size: 0.6em;
         color: #ffffff;
-        margin-top: 2px;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-        margin-bottom: 5px;
-    }
-
-    .add-icon-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 5;
-        opacity: 0;
-        transition: opacity 0.2s ease-in-out;
-
-        &:hover {
-            opacity: 1;
-        }
-
-        .add-icon {
-            color: white;
-            font-size: 2em;
-        }
+        margin-bottom: 5px; /* Space from bottom of container */
     }
 
     .remove-button {
         position: absolute;
-        top: -8px;
-        right: -8px;
-        background-color: #CC0000;
+        top: -10px; /* Adjust to move further outside */
+        left: -10px; /* Adjust to move further outside */
+        background-color: var(--danger-red); /* Use defined danger red */
         color: white;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        font-size: 0.8em;
+        border: 2px solid #ffffff; /* White border for clarity */
+        border-radius: 50%; /* Make it a circle */
+        width: 28px; /* Increased size */
+        height: 28px; /* Increased size */
+        font-size: 1em; /* Adjust icon size */
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        z-index: 10;
+        z-index: 10; /* Ensure it's on top */
         font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Add a subtle shadow */
+        transition: background-color 0.2s ease, transform 0.2s ease;
+
         &:hover {
-            background-color: #990000;
+            background-color: #a00000; /* Darker red on hover */
+            transform: scale(1.1); /* Slightly enlarge on hover */
         }
     }
 
     /* Styling for bench players */
     ${props => props.isBench && `
         width: 85px;
-        height: 90px;
+        height: 110px; /* Adjusted height for bench players too */
         .jersey-image-bg {
             background-size: 70%;
-            background-position: center 8px;
+            background-position: center top;
         }
         .team-abbr, .player-cost {
             font-size: 0.6em;
@@ -196,16 +175,16 @@ const JerseyContainer = styled.div`
             font-size: 0.55em;
         }
         .remove-button {
-            top: -6px;
-            right: -6px;
-            width: 20px;
-            height: 20px;
-            font-size: 0.7em;
+            top: -8px; /* Adjusted for bench */
+            left: -8px; /* Adjusted for bench */
+            width: 24px; /* Slightly smaller for bench */
+            height: 24px;
+            font-size: 0.8em;
         }
     `}
 `;
 
-function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick }) { // Added onPositionClick prop
+function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures }) {
     const itemType = 'player';
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -219,9 +198,11 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
     const [{ isOver }, drop] = useDrop(() => ({
         accept: itemType,
         drop: (draggedItem) => {
-            if (draggedItem.player.id === player?.id) return;
+            if (draggedItem.player.id === player?.id) return; // Prevent dropping player onto themselves
 
-            onMovePlayer(draggedItem.player, player, position);
+            // When dropping onto an existing player, it's a swap intent.
+            // When dropping onto an empty slot (player is null), it's a move to that slot.
+            onMovePlayer(draggedItem.player, player, position); // Pass target player (or null) and position
         },
         collect: (monitor) => ({
             isOver: monitor.isOver(),
@@ -235,7 +216,16 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
         drag(drop(node));
     }, [drag, drop]);
 
-    const playerFixtures = "BUR (H)"; // Simplified for this example
+    // Extract first name and optionally the last name
+    const displayName = useMemo(() => {
+        if (!player) return '';
+        const nameParts = player.name.split(' ');
+        if (nameParts.length > 1) {
+            // Take first name and last name. If there are middle names, they are omitted.
+            return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+        }
+        return nameParts[0]; // Only one name part, use it directly
+    }, [player]);
 
 
     return (
@@ -246,7 +236,12 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
             isEmpty={!player}
             isBench={isBench}
             jerseyImage={jerseySrc}
-            onClick={() => onPositionClick(position)} // Added onClick to filter by position
+            onClick={() => {
+                // Only trigger onPositionClick if it's an empty slot
+                if (!player) {
+                    onPositionClick(position);
+                }
+            }}
         >
             {player ? (
                 <>
@@ -256,19 +251,16 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                             <span className="team-abbr">{teamDetails?.shortName || player.team}</span>
                             <span className="player-cost">${player.cost.toFixed(1)}</span>
                         </div>
-                        <span className="player-name">{player.name}</span>
-                        <span className="player-fixtures">{playerFixtures}</span>
+                        {/* Player name and fixtures are now below the jersey image area */}
+                        <span className="player-name">{displayName}</span> {/* Display first and last name */}
+                        <span className="player-fixtures">{playerFixtures}</span> {/* Display dynamic fixture */}
                         <button className="remove-button" onClick={() => onRemove(player)}>
                             <FontAwesomeIcon icon={faTimes} />
                         </button>
-                        <div className="add-icon-overlay" onClick={() => onMovePlayer(player, null, position)}>
-                            <FontAwesomeIcon icon={faPlus} className="add-icon" />
-                        </div>
                     </div>
                 </>
             ) : (
-                // Render empty slot content directly here when player is null
-                // This part is for the empty slots on the pitch
+                // Empty slot content
                 <>
                     <span className="slot-position-abbr">{
                         position === 'Goalkeeper' ? 'GKP' :
