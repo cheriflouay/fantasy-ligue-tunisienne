@@ -1,0 +1,98 @@
+[
+    {
+      "id": "ESS",
+      "name": "Etoile Sahel",
+      "shortName": "ESS",
+      "logo": "ess_logo.png"
+    },
+    {
+      "id": "CA",
+      "name": "Club Africain",
+      "shortName": "CA",
+      "logo": "ca_logo.png"
+    },
+    {
+      "id": "ASM",
+      "name": "AS Marsa",
+      "shortName": "ASM",
+      "logo": "asm_logo.png"
+    },
+    {
+      "id": "CAB",
+      "name": "CA Bizertin",
+      "shortName": "CAB",
+      "logo": "cab_logo.png"
+    },
+    {
+      "id": "CSS",
+      "name": "CS Sfaxien",
+      "shortName": "CSS",
+      "logo": "css_logo.png"
+    },
+    {
+      "id": "EST",
+      "name": "Esperance Tunis",
+      "shortName": "EST",
+      "logo": "est_logo.png"
+    },
+    {
+      "id": "OB",
+      "name": "Olympique Beja",
+      "shortName": "OB",
+      "logo": "ob_logo.png"
+    },
+    {
+      "id": "ST",
+      "name": "Stade Tunisien",
+      "shortName": "ST",
+      "logo": "st_logo.png"
+    },
+    {
+      "id": "USM",
+      "name": "US Monastir",
+      "shortName": "USM",
+      "logo": "usm_logo.png"
+    },
+    {
+      "id": "JSK",
+      "name": "JS Kairouan",
+      "shortName": "JSK",
+      "logo": "jsk_logo.png"
+    },
+    {
+      "id": "ASZ",
+      "name": "AS Soliman",
+      "shortName": "ASS",
+      "logo": "ass_logo.png"
+    },
+    {
+      "id": "ASG",
+      "name": "AS Gabes",
+      "shortName": "ASG",
+      "logo": "asg_logo.png"
+    },
+    {
+      "id": "USBG",
+      "name": "US Ben Guerdane",
+      "shortName": "USBG",
+      "logo": "usbg_logo.png"
+    },
+    {
+      "id": "ESZ",
+      "name": "ES Zarzis",
+      "shortName": "ESZ",
+      "logo": "esz_logo.png"
+    },
+    {
+      "id": "JSO",
+      "name": "JS Omrane",
+      "shortName": "JSO",
+      "logo": "jso_logo.png"
+    },
+    {
+      "id": "EM",
+      "name": "ES Metlaoui",
+      "shortName": "EM",
+      "logo": "em_logo.png"
+    }
+  ]
