@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/fantasy-ligue-tunisienne/static/css/main.e6c13ad2.css",
+    "main.js": "/fantasy-ligue-tunisienne/static/js/main.905e048d.js",
+    "static/js/453.74caf899.chunk.js": "/fantasy-ligue-tunisienne/static/js/453.74caf899.chunk.js",
+    "index.html": "/fantasy-ligue-tunisienne/index.html",
+    "main.e6c13ad2.css.map": "/fantasy-ligue-tunisienne/static/css/main.e6c13ad2.css.map",
+    "main.905e048d.js.map": "/fantasy-ligue-tunisienne/static/js/main.905e048d.js.map",
+    "453.74caf899.chunk.js.map": "/fantasy-ligue-tunisienne/static/js/453.74caf899.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.905e048d.js"
+  ]
+}
