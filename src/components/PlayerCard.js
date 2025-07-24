@@ -6,7 +6,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
 // Base styling for both card and list item
-const BaseCard = styled.div`
+const BaseCard = styled.div.withConfig({
+    shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
+      !['isAdded'].includes(prop)
+      // No defaultValidatorFn call here
+  })`
     background-color: var(--card-bg); /* Use defined card background */
     border: 1px solid var(--border-color); /* Use defined border color */
     border-radius: 8px;
@@ -42,7 +46,11 @@ const BaseCard = styled.div`
 `;
 
 // Specific styling for list item
-const ListItem = styled(BaseCard)`
+const ListItem = styled(BaseCard).withConfig({
+    shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
+      !['isDragging'].includes(prop)
+      // No defaultValidatorFn call here
+  })`
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -130,7 +138,7 @@ const ListItem = styled(BaseCard)`
         flex-shrink: 0;
 
         &:hover {
-            background-color: ${props => props.isAdded ? 'var(--border-color)' : 'darken(var(--primary-green), 10%)'}; /* Darken on hover */
+            background-color: ${props => props.isAdded ? 'var(--border-color)' : 'darken(var(--primary-green), 10%)'};
         }
     }
 `;

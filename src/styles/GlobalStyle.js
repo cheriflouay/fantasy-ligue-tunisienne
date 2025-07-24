@@ -2,7 +2,7 @@
 import { createGlobalStyle } from 'styled-components';
 
 const GlobalStyle = createGlobalStyle`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    /* REMOVED: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap'); */
 
     :root {
         /* Define a color palette */
@@ -19,7 +19,7 @@ const GlobalStyle = createGlobalStyle`
 
     body {
         margin: 0;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', sans-serif; /* Font will now be loaded from index.html */
         background-color: var(--primary-green); /* Solid green background matching header */
         min-height: 100vh;
         display: flex;

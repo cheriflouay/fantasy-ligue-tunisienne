@@ -5,7 +5,11 @@ import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-const JerseyContainer = styled.div`
+const JerseyContainer = styled.div.withConfig({
+    shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
+      !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage'].includes(prop)
+      // No defaultValidatorFn call here
+  })`
     background-color: transparent;
     border-radius: 8px;
     padding: 0;
@@ -175,11 +179,11 @@ const JerseyContainer = styled.div`
             font-size: 0.55em;
         }
         .remove-button {
-            top: -8px; /* Adjusted for bench */
+            top: -8px;
             left: -8px; /* Adjusted for bench */
-            width: 24px; /* Slightly smaller for bench */
+            width: 24px;
             height: 24px;
-            font-size: 0.8em;
+            font-size: 0.7em;
         }
     `}
 `;
@@ -252,8 +256,8 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                             <span className="player-cost">${player.cost.toFixed(1)}</span>
                         </div>
                         {/* Player name and fixtures are now below the jersey image area */}
-                        <span className="player-name">{displayName}</span> {/* Display first and last name */}
-                        <span className="player-fixtures">{playerFixtures}</span> {/* Display dynamic fixture */}
+                        <span className="player-name">{displayName}</span>
+                        <span className="player-fixtures">{playerFixtures}</span>
                         <button className="remove-button" onClick={() => onRemove(player)}>
                             <FontAwesomeIcon icon={faTimes} />
                         </button>

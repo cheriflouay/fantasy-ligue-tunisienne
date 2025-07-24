@@ -92,7 +92,7 @@ const TeamInfoBar = styled.div`
     }
 `;
 
-function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, currentUser }) { // Added currentUser
+function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData, currentUser }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });

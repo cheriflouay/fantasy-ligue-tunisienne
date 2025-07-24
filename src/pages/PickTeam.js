@@ -98,19 +98,27 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
 
-    const initialBudget = 100.0;
+    const initialBudget = 100.0; // Base budget for calculations
     const maxPlayers = 15;
 
+    // Calculate current budget based on locally selected players
+    const currentTeamCost = selectedPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
+    const currentBudgetRemaining = (initialBudget - currentTeamCost).toFixed(1);
+
+
     useEffect(() => {
+        // This effect runs once on mount or when userData/allPlayers changes
+        // It initializes the local selectedPlayers state from the userData prop (from Firestore)
         if (userData && allPlayers.length > 0) {
             const initialSelection = userData.players.map(playerId =>
                 allPlayers.find(p => p.id === playerId)
             ).filter(Boolean);
             setSelectedPlayers(initialSelection);
         } else if (!userData && allPlayers.length > 0 && isInitialPick) {
+            // For a brand new user/session before any data is loaded
             setSelectedPlayers([]);
         }
-    }, [userData, allPlayers, isInitialPick]);
+    }, [userData, allPlayers, isInitialPick]); // Depend on userData and allPlayers for initial sync
 
     useEffect(() => {
         let currentPlayers = allPlayers;
@@ -135,65 +143,48 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             return;
         }
 
-        if (isInitialPick && selectedPlayers.length >= maxPlayers) {
-            alert('Squad is full! Maximum 15 players allowed for initial selection.');
+        if (selectedPlayers.length >= maxPlayers) {
+            alert('Squad is full! Maximum 15 players allowed.');
             return;
         }
 
-        if (!isInitialPick && selectedPlayers.length >= maxPlayers) {
-             alert('Squad is full! Maximum 15 players allowed in total squad.');
-             return;
-        }
-
-        const currentBudget = userData ? userData.budget : initialBudget;
-
-        if (currentBudget < player.cost) {
-            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - currentBudget).toFixed(1)}M more.`);
+        // Use the locally calculated budget for checks, not userData.budget directly
+        if (parseFloat(currentBudgetRemaining) < player.cost) { // Parse to float for comparison
+            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - parseFloat(currentBudgetRemaining)).toFixed(1)}M more.`);
             return;
         }
 
-        const newPlayers = [...selectedPlayers, player];
-        setSelectedPlayers(newPlayers);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: newPlayers.map(p => p.id),
-            budget: parseFloat((userData.budget - player.cost).toFixed(1))
-        });
-    }, [selectedPlayers, userData, setUserData, isInitialPick, maxPlayers, initialBudget]);
+        // Only update local state, DO NOT call setUserData here
+        setSelectedPlayers(prev => [...prev, player]);
+
+    }, [selectedPlayers, currentBudgetRemaining, maxPlayers]);
 
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
-        const newPlayers = selectedPlayers.filter(p => p.id !== playerToRemove.id);
-        setSelectedPlayers(newPlayers);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: newPlayers.map(p => p.id),
-            budget: parseFloat((userData.budget + playerToRemove.cost).toFixed(1))
-        });
-    }, [selectedPlayers, userData, setUserData]);
+        // Only update local state, DO NOT call setUserData here
+        setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
+    }, []); // Removed selectedPlayers from dependencies as it's used in functional update
 
+
+    // This function is called by SelectedTeamDisplay's AutoPick/Reset
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
-        const totalCost = newPlayers.reduce((sum, player) => sum + (player ? player.cost : 0), 0);
-        const newBudget = (initialBudget - totalCost).toFixed(1);
-
-        setSelectedPlayers(newPlayers.filter(Boolean));
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: newPlayers.filter(Boolean).map(p => p.id),
-            budget: parseFloat(newBudget)
-        });
-    }, [initialBudget, setUserData, userData]);
-
+        // Only update local state, DO NOT call setUserData here
+        setSelectedPlayers(newPlayers.filter(Boolean)); // Filter out nulls from auto-pick
+    }, []); // No dependencies related to userData here
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPosition) => {
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player);
         } else {
             console.log(`Player ${player.name} moved within squad to position ${targetPosition}.`);
-            // To implement actual swaps, you'd need to find `player` and `targetPlayer` in `selectedPlayers`
-            // and update their positions/swap them. This is out of scope for a quick fix for now.
+            // For actual swaps/repositions, you'd implement logic here that updates selectedPlayers
+            // based on the targetPlayer or targetPosition.
+            // Example for simple reposition (removes then re-adds, useEffect re-sorts):
+            const filtered = selectedPlayers.filter(p => p.id !== player.id);
+            setSelectedPlayers([...filtered, player]);
         }
-    }, [selectedPlayers, handleAddPlayer]);
+    }, [selectedPlayers, handleAddPlayer]); // Depend on selectedPlayers and handleAddPlayer
+
 
     const handlePositionFilterClick = useCallback((positionType) => {
         setFilters(prevFilters => ({
@@ -207,19 +198,17 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             alert(`Please select exactly ${maxPlayers} players to save your initial team.`);
             return;
         }
-        const finalBudget = userData ? userData.budget : initialBudget - selectedPlayers.reduce((sum, p) => sum + p.cost, 0);
+        // Calculate the final budget based on the current local selectedPlayers
+        const finalBudget = (initialBudget - currentTeamCost).toFixed(1);
 
-        onInitialSave(selectedPlayers, finalBudget); // This function is now responsible for saving to Firestore
+        // Call the parent's onInitialSave, which will trigger Firestore update in App.js
+        onInitialSave(selectedPlayers, finalBudget);
     };
 
     const handleResetTeam = useCallback(() => {
+        // Only update local state, DO NOT call setUserData here
         setSelectedPlayers([]);
-        setUserData({ // Call the parent's setUserData (which updates Firestore)
-            ...userData,
-            players: [],
-            budget: initialBudget
-        });
-    }, [setUserData, initialBudget, userData]);
+    }, []); // No dependencies needed as it sets to empty array
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
@@ -231,7 +220,8 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
             <PickTeamContainer>
                 <PlayerSelectionArea>
                     <h2>{isInitialPick ? "Select Your Squad" : "Your Lineup"}</h2>
-                    <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
+                    {/* Display current local budget and player count */}
+                    <p>Budget: ${currentBudgetRemaining}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
                     <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
                     <PlayerList>
                         {filteredPlayers.map(player => (
@@ -249,7 +239,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                 <TeamDisplayArea>
                     <TeamInfoBar>
                         <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
-                        <p className="budget-display">Budget Remaining: ${userData.budget.toFixed(1)}M</p>
+                        <p className="budget-display">Budget Remaining: ${currentBudgetRemaining}M</p>
                     </TeamInfoBar>
 
                     <SelectedTeamDisplay
@@ -258,14 +248,14 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
-                        budget={userData.budget}
+                        budget={currentBudgetRemaining} // Pass the locally calculated budget
                         isInitialPick={isInitialPick}
                         onPositionClick={handlePositionFilterClick}
                         allAvailablePlayers={allPlayers}
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
                         onResetTeam={handleResetTeam}
                     />
-                    {isInitialPick && selectedPlayers.length === maxPlayers && (
+                    {isInitialPick && (
                         <button
                             style={{
                                 marginTop: '20px',
@@ -274,9 +264,12 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '5px',
-                                cursor: 'pointer'
+                                // Removed duplicate cursor property
+                                cursor: selectedPlayers.length === maxPlayers ? 'pointer' : 'not-allowed',
+                                opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5, // Visual feedback for button
                             }}
                             onClick={handleSaveTeam}
+                            disabled={selectedPlayers.length !== maxPlayers} // Disable if not 15 players
                         >
                             Save Initial Team
                         </button>
@@ -289,7 +282,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                                 backgroundColor: 'var(--primary-green)',
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '5px',
+                                borderRadius: '5px;',
                                 cursor: 'pointer'
                             }}
                             onClick={() => console.log('Save lineup changes (captain, formation, etc.)')}

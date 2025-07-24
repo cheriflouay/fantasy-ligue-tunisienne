@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
@@ -52,8 +52,11 @@ function App() {
     const [auth, setAuth] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
 
-    const localAppId = 'fantasy-ligue-tunisienne-local';
-    const localFirebaseConfig = {
+    // --- IMPORTANT: Local Fallback for Canvas Environment Variables ---
+    // These variables are provided by the Canvas environment.
+    // For local development, provide fallback values by checking window object.
+    const localAppId = 'fantasy-ligue-tunisienne-local'; // A unique ID for your local app data
+    const localFirebaseConfig = useMemo(() => ({ // Wrapped in useMemo for stability
         apiKey: "AIzaSyA1-ZN4ltO9Clx36V1A6DqiGAVRamt2RNA",
         authDomain: "fantasy-ligue-tunisienne-42148.firebaseapp.com",
         projectId: "fantasy-ligue-tunisienne-42148",
@@ -61,15 +64,18 @@ function App() {
         messagingSenderId: "434834511318",
         appId: "1:434834511318:web:5827cad8c8d0fe48044077",
         measurementId: "G-4K0QS7092Y"
-    };
-    const localInitialAuthToken = null;
+    }), []); // Empty dependency array means it's created once
 
+    const localInitialAuthToken = null; // No custom token for local dev, use email/password or anonymous
+
+    // Determine actual values, preferring Canvas globals if they exist on the window object
     const currentAppId = typeof window !== 'undefined' && typeof window.__app_id !== 'undefined' ? window.__app_id : localAppId;
     const currentFirebaseConfig = typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined' ? JSON.parse(window.__firebase_config) : localFirebaseConfig;
     const currentInitialAuthToken = typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : localInitialAuthToken;
+    // --- END LOCAL FALLBACK ---
 
 
-    // Function to fetch user data from Firestore
+    // Function to fetch user data from Firestore - MOVED TO TOP for initialization order
     const fetchUserData = useCallback(async (uid, dbInstance) => {
         if (!dbInstance || !uid) return;
 
@@ -80,8 +86,8 @@ function App() {
                 const fetchedData = docSnap.data();
                 setUserData(fetchedData);
 
-                // Determine if initial team is saved based on players array length
-                const hasSavedTeam = fetchedData.players && fetchedData.players.length === 15; // Explicitly check for 15 players
+                // Determine if initial team is saved based on players array length (must be 15)
+                const hasSavedTeam = fetchedData.players && fetchedData.players.length === 15;
                 setIsInitialTeamSaved(hasSavedTeam);
 
                 // Set active page based on whether the full initial team is saved
@@ -119,11 +125,12 @@ function App() {
         });
 
         return unsubscribe;
-    }, [currentAppId, setActivePage]);
+    }, [currentAppId, setActivePage]); // Dependencies for fetchUserData
 
 
-    // Firebase Initialization
+    // Firebase Initialization - NOW AFTER fetchUserData
     useEffect(() => {
+        // Only attempt Firebase initialization if in a browser environment
         if (typeof window === 'undefined') {
             console.warn("Skipping Firebase initialization: Not in a browser environment.");
             setLoadingAuth(false);
@@ -141,7 +148,7 @@ function App() {
             const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
                 if (user) {
                     setCurrentUser(user);
-                    await fetchUserData(user.uid, dbInstance);
+                    await fetchUserData(user.uid, dbInstance); // fetchUserData is now defined
                 } else {
                     setCurrentUser(null);
                     setUserData(null);
@@ -167,10 +174,10 @@ function App() {
             console.error("Firebase initialization failed:", error);
             setLoadingAuth(false);
         }
-    }, [currentFirebaseConfig, currentInitialAuthToken, fetchUserData]);
+    }, [currentFirebaseConfig, currentInitialAuthToken, fetchUserData]); // Dependencies for Firebase init
 
 
-    // Load static data
+    // Load static data (players, teams, fixtures)
     useEffect(() => {
         setAllPlayers(mockPlayersData);
         setAllTeams(mockTeamsData);

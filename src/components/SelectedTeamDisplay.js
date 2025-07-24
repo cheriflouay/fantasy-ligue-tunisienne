@@ -5,7 +5,7 @@ import PlayerJersey from './PlayerJersey';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
-// Styled components for the pitch elements (no changes needed here from previous)
+// Styled components for the pitch elements
 const PitchContainer = styled.div`
   background-color: #008000; /* Dark green for the pitch */
   border-radius: 10px;
@@ -28,7 +28,11 @@ const PitchContainer = styled.div`
   }
 `;
 
-const PitchLine = styled.div`
+const PitchLine = styled.div.withConfig({
+  shouldForwardProp: (prop) => // REMOVED defaultValidatorFn from arguments
+    !['top', 'bottom'].includes(prop)
+    // No defaultValidatorFn call here
+})`
   background-color: white;
   position: absolute;
 `;

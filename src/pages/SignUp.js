@@ -1,5 +1,5 @@
 // src/pages/SignUp.js
-import React, { useState } from 'react'; // Corrected import
+import React, { useState } from 'react';
 import styled from 'styled-components';
 
 const AuthContainer = styled.div`
@@ -60,10 +60,10 @@ const AuthBox = styled.div`
         }
     }
 
-    .link-button { /* Added link-button style for consistency with Login.js */
+    .link-button { /* Style for button acting as a link */
         background: none;
         border: none;
-        color: var(--secondary-red); /* Changed to secondary-red for sign up link */
+        color: var(--secondary-red);
         font-size: 1em;
         font-weight: bold;
         cursor: pointer;
@@ -97,7 +97,7 @@ const AuthBox = styled.div`
     }
 `;
 
-function SignUp({ onSignUp, setActivePage }) { // Corrected function signature
+function SignUp({ onSignUp, setActivePage }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -164,7 +164,7 @@ function SignUp({ onSignUp, setActivePage }) { // Corrected function signature
                 {error && <p className="error-message">{error}</p>}
                 <p>
                     Already have an account?{' '}
-                    <button type="button" className="link-button" onClick={() => setActivePage('login')}> {/* Changed to button */}
+                    <button type="button" className="link-button" onClick={() => setActivePage('login')}>
                         Login
                     </button>
                 </p>

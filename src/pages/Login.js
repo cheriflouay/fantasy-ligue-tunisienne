@@ -60,14 +60,14 @@ const AuthBox = styled.div`
         }
     }
 
-    .link-button { /* New style for button acting as a link */
+    .link-button { /* Style for button acting as a link */
         background: none;
         border: none;
         color: var(--primary-green);
         font-size: 1em;
         font-weight: bold;
         cursor: pointer;
-        text-decoration: none; /* Remove default underline */
+        text-decoration: none;
         padding: 0;
         margin: 0;
         transition: text-decoration 0.3s ease;
@@ -140,7 +140,7 @@ function Login({ onLogin, setActivePage }) {
                 {error && <p className="error-message">{error}</p>}
                 <p>
                     Don't have an account?{' '}
-                    <button type="button" className="link-button" onClick={() => setActivePage('signup')}> {/* Changed to button */}
+                    <button type="button" className="link-button" onClick={() => setActivePage('signup')}>
                         Sign Up
                     </button>
                 </p>
