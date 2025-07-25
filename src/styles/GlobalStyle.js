@@ -6,7 +6,7 @@ const GlobalStyle = createGlobalStyle`
 
     :root {
         /* Define a color palette */
-        --primary-green: #006400; /* Darker, richer green */
+        --primary-green: #006400; /* Darker, richer green - still used for pitch */
         --secondary-red: #CC0000; /* Vibrant red */
         --light-grey-bg: #f0f2f5; /* Clean light grey */
         --dark-text: #2c3e50; /* Dark blue-grey for text */
@@ -17,26 +17,34 @@ const GlobalStyle = createGlobalStyle`
         --danger-red: #dc3545; /* Standard danger red */
     }
 
-    body {
+    html, body { /* Apply purple background to both html and body */
         margin: 0;
-        font-family: 'Inter', sans-serif; /* Font will now be loaded from index.html */
-        background-color: var(--primary-green); /* Solid green background matching header */
-        min-height: 100vh;
+        padding: 0;
+        height: 100%; /* Ensure they take full height */
+        background-color: #52008C; /* Dark purple background */
+        font-family: 'Inter', sans-serif;
+        color: var(--dark-text);
+    }
+
+    body {
         display: flex;
         flex-direction: column;
-        color: var(--dark-text);
     }
 
     #root {
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+        /* Ensure #root doesn't have a background that would hide body's */
+        background-color: transparent;
     }
 
     main {
         flex-grow: 1;
         padding: 20px;
         box-sizing: border-box;
+        /* Remove background-color here to let body's background show through */
+        background-color: transparent;
     }
 
     h1, h2, h3, h4, h5, h6 {

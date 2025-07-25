@@ -8,6 +8,9 @@ import PlayerSearchFilter from '../components/PlayerSearchFilter';
 import PlayerCard from '../components/PlayerCard';
 import SelectedTeamDisplay from '../components/SelectedTeamDisplay';
 
+// Import the styled components from SelectedTeamDisplay
+import { ButtonContainer, ActionButton } from '../components/SelectedTeamDisplay';
+
 const PickTeamContainer = styled.div`
     display: flex;
     gap: 20px;
@@ -121,6 +124,9 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
     const [captainId, setCaptainId] = useState(userData?.captainId || null);
     const [viceCaptainId, setViceCaptainId] = useState(userData?.viceCaptainId || null);
+    const [substitutionMode, setSubstitutionMode] = useState(false); // NEW: State for substitution mode
+    const [playerToSubstitute, setPlayerToSubstitute] = useState(null); // NEW: State for the first player selected for substitution
+
 
     const initialBudget = 100.0;
     const maxPlayers = 15;
@@ -229,10 +235,11 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
         }));
     }, []);
 
-    // New: Handle setting captain
+    // Handle setting captain
     const handleSetCaptain = useCallback((player) => {
         if (!player) return;
 
+        // Determine if player is in the starting XI (first 11 players in selectedPlayers array)
         const isPlayerInStartingXI = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id);
 
         if (!isPlayerInStartingXI && !isInitialPick) {
@@ -250,10 +257,11 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
         }
     }, [captainId, viceCaptainId, selectedPlayers, isInitialPick]);
 
-    // New: Handle setting vice-captain
+    // Handle setting vice-captain
     const handleSetViceCaptain = useCallback((player) => {
         if (!player) return;
 
+        // Determine if player is in the starting XI
         const isPlayerInStartingXI = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id);
 
         if (!isPlayerInStartingXI && !isInitialPick) {
@@ -300,6 +308,82 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
         setViceCaptainId(null);
     }, []);
 
+    // Dummy for Auto Pick specific to PickTeam if it's not the initial pick
+    const handleAutoPickTeam = useCallback(() => {
+        alert("Auto Pick for My Team functionality (e.g., suggesting optimal lineup) would go here.");
+        // This function would typically re-arrange the selectedPlayers into an optimal formation
+        // based on some criteria (e.g., highest points, best form).
+    }, []);
+
+    // NEW: Function to toggle substitution mode
+    const handleSubstitutionClick = useCallback(() => {
+        setSubstitutionMode(prevMode => !prevMode);
+        setPlayerToSubstitute(null); // Reset selected player when toggling mode
+        alert(substitutionMode ? "Substitution mode OFF" : "Substitution mode ON. Select the first player to swap.");
+    }, [substitutionMode]);
+
+
+    // NEW: Function to handle player clicks specifically for substitution
+    const handlePlayerClickForSubstitution = useCallback((clickedPlayer, isBenchPlayer) => {
+        if (!substitutionMode) {
+            // If not in substitution mode, allow normal captaincy selection
+            // This part is handled by PlayerJersey's internal logic for captaincy buttons
+            return;
+        }
+
+        if (!clickedPlayer) { // Cannot substitute an empty slot
+            alert("Please select a player to substitute.");
+            return;
+        }
+
+        if (!playerToSubstitute) {
+            // First player selected for substitution
+            setPlayerToSubstitute(clickedPlayer);
+            alert(`Selected ${clickedPlayer.name} for substitution. Now select the player to swap with.`);
+        } else {
+            // Second player selected for substitution (perform the swap)
+            if (playerToSubstitute.id === clickedPlayer.id) {
+                alert("Cannot swap a player with themselves. Select a different player.");
+                setPlayerToSubstitute(null); // Deselect
+                return;
+            }
+
+            // Determine if the first player is on pitch and second on bench, or vice-versa
+            const player1OnPitch = selectedPlayers.slice(0, 11).some(p => p && p.id === playerToSubstitute.id);
+            const player2OnPitch = selectedPlayers.slice(0, 11).some(p => p && p.id === clickedPlayer.id);
+
+            const player1OnBench = !player1OnPitch && selectedPlayers.some(p => p && p.id === playerToSubstitute.id);
+            const player2OnBench = !player2OnPitch && selectedPlayers.some(p => p && p.id === clickedPlayer.id);
+
+            // Rule: One must be on pitch, the other on bench
+            const isValidSwap = (player1OnPitch && player2OnBench) || (player1OnBench && player2OnPitch);
+
+            if (!isValidSwap) {
+                alert("Invalid substitution: One player must be on the pitch and the other on the bench.");
+                setPlayerToSubstitute(null); // Reset selection
+                return;
+            }
+
+            // Perform the swap
+            setSelectedPlayers(prevPlayers => {
+                const newPlayers = [...prevPlayers];
+                const idx1 = newPlayers.findIndex(p => p && p.id === playerToSubstitute.id);
+                const idx2 = newPlayers.findIndex(p => p && p.id === clickedPlayer.id);
+
+                if (idx1 !== -1 && idx2 !== -1) {
+                    // Simple swap of players in the array
+                    [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]];
+                }
+                return newPlayers;
+            });
+
+            // Reset substitution state
+            setSubstitutionMode(false);
+            setPlayerToSubstitute(null);
+            alert(`Successfully swapped ${playerToSubstitute.name} with ${clickedPlayer.name}!`);
+        }
+    }, [substitutionMode, playerToSubstitute, selectedPlayers]);
+
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
         return <PickTeamContainer>Loading player data...</PickTeamContainer>;
@@ -307,7 +391,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <PickTeamContainer isInitialPick={isInitialPick}> {/* Pass isInitialPick to styled component */}
+            <PickTeamContainer isInitialPick={isInitialPick}>
                 {isInitialPick && ( // Conditionally render PlayerSelectionArea
                     <PlayerSelectionArea>
                         <h2>Select Your Squad</h2>
@@ -327,7 +411,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                         </PlayerList>
                     </PlayerSelectionArea>
                 )}
-                <TeamDisplayArea isInitialPick={isInitialPick}> {/* Pass isInitialPick to styled component */}
+                <TeamDisplayArea isInitialPick={isInitialPick}>
                     <TeamInfoBar>
                         <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
                         <p className="budget-display">Budget Remaining: ${currentBudgetRemaining}M</p>
@@ -349,42 +433,35 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, is
                         viceCaptainId={viceCaptainId}
                         onSetCaptain={handleSetCaptain}
                         onSetViceCaptain={handleSetViceCaptain}
+                        // NEW: Pass substitution related props
+                        substitutionMode={substitutionMode}
+                        playerToSubstitute={playerToSubstitute}
+                        onPlayerClickForSubstitution={handlePlayerClickForSubstitution}
+                        onToggleSubstitutionMode={handleSubstitutionClick} // Pass the toggle function
                     />
-                    {/* BenchContainer and ButtonContainer are now rendered by SelectedTeamDisplay */}
-                    {/* Only render the "Save Initial Team" or "Save Lineup Changes" buttons here */}
-                    {isInitialPick && (
-                        <button
-                            style={{
-                                marginTop: '20px',
-                                padding: '10px 20px',
-                                backgroundColor: 'var(--primary-green)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '5px',
-                                cursor: selectedPlayers.length === maxPlayers ? 'pointer' : 'not-allowed',
-                                opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5,
-                            }}
-                            onClick={handleSaveTeam}
-                            disabled={selectedPlayers.length !== maxPlayers}
-                        >
-                            Save Initial Team
-                        </button>
-                    )}
-                    {!isInitialPick && (
-                        <button
-                            style={{
-                                marginTop: '20px',
-                                padding: '10px 20px',
-                                backgroundColor: 'var(--primary-green)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '5px',
-                                cursor: 'pointer'
-                            }}
-                            onClick={handleSaveLineupChanges}
-                        >
-                            Save Lineup Changes
-                        </button>
+                    {/* All buttons are now controlled here for both initial pick and "My Team" */}
+                    {isInitialPick ? (
+                        <ButtonContainer>
+                            <ActionButton onClick={handleAutoPickTeam}>Auto Pick</ActionButton>
+                            <ActionButton onClick={handleResetTeam}>Reset</ActionButton>
+                            <ActionButton
+                                onClick={handleSaveTeam}
+                                disabled={selectedPlayers.length !== maxPlayers}
+                                style={{
+                                    opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5,
+                                }}
+                            >
+                                Save Initial Team
+                            </ActionButton>
+                        </ButtonContainer>
+                    ) : (
+                        // MODIFIED: Only "Save Lineup Changes" button here
+                        <ButtonContainer>
+                            <ActionButton onClick={handleSaveLineupChanges}>
+                            Save Your Team
+                            </ActionButton>
+                            {/* REMOVED: Substitution button from here. It's now on PlayerJersey. */}
+                        </ButtonContainer>
                     )}
                 </TeamDisplayArea>
             </PickTeamContainer>

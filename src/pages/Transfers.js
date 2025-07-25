@@ -8,6 +8,9 @@ import PlayerSearchFilter from '../components/PlayerSearchFilter';
 import PlayerCard from '../components/PlayerCard';
 import SelectedTeamDisplay from '../components/SelectedTeamDisplay';
 
+// Import the styled components from SelectedTeamDisplay
+import { ButtonContainer, ActionButton } from '../components/SelectedTeamDisplay';
+
 const TransfersContainer = styled.div`
     display: flex;
     gap: 20px;
@@ -193,6 +196,19 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         }));
     }, [setUserData, initialBudget]);
 
+    // Dummy functions for Auto Pick and Reset since SelectedTeamDisplay no longer handles them
+    const handleAutoPick = useCallback(() => {
+        alert("Auto Pick functionality for Transfers page would go here.");
+        // You would typically implement logic similar to SelectedTeamDisplay's handleAutoPick here,
+        // but tailored for the transfer context (e.g., suggesting players to buy/sell).
+    }, []);
+
+    const handleConfirmTransfers = useCallback(() => {
+        alert("Confirm Transfers clicked! (Implement actual transfer saving logic here)");
+        // This is where you'd typically save the final selectedPlayers to your backend/Firestore
+        // and update the user's budget, potentially adjusting for transfer fees.
+    }, []);
+
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
         return <TransfersContainer>Loading transfer data...</TransfersContainer>;
@@ -226,25 +242,22 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
 
                     <SelectedTeamDisplay
                         selectedPlayers={selectedPlayers}
-                        onRemove={handleRemovePlayer} // Pass handleRemovePlayer
+                        onRemove={handleRemovePlayer}
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
                         budget={userData.budget}
                         isInitialPick={true} // Transfers always show 15 players on pitch
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
-                        onResetTeam={handleResetTeam}
-                        canRemove={true} // NEW: Always show remove button on Transfers page
+                        onResetTeam={handleResetTeam} // Keep this for now, though buttons are moved
+                        canRemove={true} // Always show remove button on Transfers page
                     />
-                    <button style={{
-                        marginTop: '20px',
-                        padding: '10px 20px',
-                        backgroundColor: '#008000',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
-                    }}>Confirm Transfers</button>
+                    {/* MODIFIED: All three buttons in one ButtonContainer */}
+                    <ButtonContainer>
+                        <ActionButton onClick={handleAutoPick}>Auto Pick</ActionButton>
+                        <ActionButton onClick={handleResetTeam}>Reset</ActionButton> {/* Use handleResetTeam from this component */}
+                        <ActionButton onClick={handleConfirmTransfers}>Confirm Transfers</ActionButton>
+                    </ButtonContainer>
                 </TeamDisplayArea>
             </TransfersContainer>
         </DndProvider>
