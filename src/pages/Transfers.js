@@ -203,20 +203,29 @@ const HeaderStats = styled.div`
 const TRANSFER_PITCH_LIMITS = { Goalkeeper: 2, Defender: 5, Midfielder: 5, Forward: 3 };
 
 function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData }) {
+    // selectedPlayers will now hold objects { id: playerId, onPitch: boolean }
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
     const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All', cost: 'All', points: 'All' });
     const [sortOrder, setSortOrder] = useState({ key: 'totalPoints', direction: 'desc' });
 
-    const initialBudget = 100.0;
+    const initialBudget = 100.0; // This is the starting budget, not necessarily current
     const maxPlayers = 15;
-    const maxPlayersPerTeam = 3; // Maximum 3 players per team
+    const maxPlayersPerTeam = 3;
+
+    // Removed currentTeamCost as it's not directly used
+    const currentBudgetRemaining = (userData?.budget !== undefined ? userData.budget : initialBudget).toFixed(1);
+
 
     useEffect(() => {
         if (userData && allPlayers.length > 0) {
-            const initialSelection = userData.players.map(playerId =>
-                allPlayers.find(p => p.id === playerId)
-            ).filter(Boolean);
+            // Map stored player IDs to full player objects, preserving onPitch status
+            // For Transfers, we treat all existing players as "onPitch" for display purposes
+            // as the Transfers page shows a full 15-player pitch.
+            const initialSelection = userData.players.map(playerData => {
+                const player = allPlayers.find(p => p.id === playerData.id);
+                return player ? { ...player, onPitch: true } : null; // Set onPitch to true for display
+            }).filter(Boolean);
             setSelectedPlayers(initialSelection);
         }
     }, [userData, allPlayers]);
@@ -280,43 +289,29 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         const currentPositionCount = selectedPlayers.filter(p => p.position === player.position).length;
         const maxAllowedForPosition = TRANSFER_PITCH_LIMITS[player.position];
 
-        if (currentPositionCount >= maxAllowedForPosition) {
-            alert(`You already have ${currentPositionCount} ${player.position}s. You can have a maximum of ${maxAllowedForPosition} ${player.position}s on the pitch.`);
+        if (player.position === 'Goalkeeper' && currentPositionCount >= TRANSFER_PITCH_LIMITS.Goalkeeper) {
+            alert(`You already have ${currentPositionCount} ${player.position}s. You can have a maximum of ${TRANSFER_PITCH_LIMITS.Goalkeeper} Goalkeepers.`);
             return;
-        }
-
-        // If a position filter is active (from clicking an empty slot), enforce it
-        if (filters.position !== 'All' && player.position !== filters.position) {
-            alert(`You can only add a ${filters.position} to this selected filter. ${player.name} is a ${player.position}.`);
-            return;
+        } else if (player.position !== 'Goalkeeper' && currentPositionCount >= maxAllowedForPosition) {
+             alert(`You already have ${currentPositionCount} ${player.position}s. You can have a maximum of ${maxAllowedForPosition} ${player.position}s.`);
+             return;
         }
 
 
-        const currentBudget = userData ? userData.budget : initialBudget;
-
-        if (currentBudget < player.cost) {
-            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - currentBudget).toFixed(1)}M more.`);
+        // Use userData.budget for current budget check
+        if (parseFloat(currentBudgetRemaining) < player.cost) {
+            alert(`Not enough budget to add ${player.name}. You need $${(player.cost - parseFloat(currentBudgetRemaining)).toFixed(1)}M more.`);
             return;
         }
 
-        setSelectedPlayers(prev => [...prev, player]);
-        // REMOVED: Immediate setUserData call here. It will be handled by Confirm Transfers.
-        // setUserData(prev => ({
-        //     ...prev,
-        //     players: [...prev.players, player.id],
-        //     budget: parseFloat((prev.budget - player.cost).toFixed(1))
-        // }));
-    }, [selectedPlayers, userData, maxPlayers, initialBudget, filters.position, maxPlayersPerTeam, allTeams]); // Removed setUserData from deps
+        // Add player with onPitch: true for display on the transfers pitch
+        setSelectedPlayers(prev => [...prev, { ...player, onPitch: true }]);
+
+    }, [selectedPlayers, currentBudgetRemaining, maxPlayers, maxPlayersPerTeam, allTeams]);
 
     const handleRemovePlayer = useCallback((playerToRemove) => {
         setSelectedPlayers(prev => prev.filter(p => p.id !== playerToRemove.id));
-        // REMOVED: Immediate setUserData call here. It will be handled by Confirm Transfers.
-        // setUserData(prev => ({
-        //     ...prev,
-        //     players: prev.players.filter(id => id !== playerToRemove.id),
-        //     budget: parseFloat((prev.budget + playerToRemove.cost).toFixed(1))
-        // }));
-    }, []); // Removed setUserData from deps
+    }, []);
 
     const handlePlayerDrop = useCallback((player, targetPlayer, targetPositionType) => {
         // In Transfers, we simply add if not already selected, or do nothing if already selected.
@@ -324,31 +319,45 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         if (!selectedPlayers.some(p => p.id === player.id)) {
             handleAddPlayer(player); // This will update selectedPlayers locally
         } else {
-            // If the player is already in the squad, no action is needed on drop.
-            // This prevents accidental re-ordering/swapping on the transfers pitch if not intended.
-            console.log(`Player ${player.name} is already in the squad.`);
+            // If the player is already in the squad, allow re-ordering on the pitch
+            const draggedIdx = selectedPlayers.findIndex(p => p && p.id === player.id);
+            if (draggedIdx === -1) return;
+
+            let tempSelectedPlayers = [...selectedPlayers];
+            const [removedPlayer] = tempSelectedPlayers.splice(draggedIdx, 1);
+
+            if (targetPlayer) {
+                const targetIdx = tempSelectedPlayers.findIndex(p => p && p.id === targetPlayer.id);
+                if (targetIdx !== -1) {
+                    tempSelectedPlayers.splice(targetIdx, 0, removedPlayer);
+                } else {
+                    tempSelectedPlayers.push(removedPlayer);
+                }
+            } else {
+                tempSelectedPlayers.push(removedPlayer);
+            }
+            setSelectedPlayers(tempSelectedPlayers);
         }
     }, [selectedPlayers, handleAddPlayer]);
 
 
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
-        // This function is crucial for keeping the parent state (userData) in sync
-        // with changes made within SelectedTeamDisplay (e.g., player removals via remove button).
-        // It should update the local selectedPlayers state.
         setSelectedPlayers(newPlayers.filter(Boolean));
-        // The actual userData (including budget) in App.js will be updated on Confirm Transfers.
-    }, []); // No dependencies on budget/setUserData needed here, as it's a local sync.
+    }, []);
 
     const handleResetTeam = useCallback(() => {
-        setSelectedPlayers([]);
-        // REMOVED: Immediate setUserData call here. It will be handled by Confirm Transfers.
-        // setUserData(prev => ({
-        //     ...prev,
-        //     players: [],
-        //     budget: initialBudget
-        // }));
-        alert("Your transfers have been reset locally. Click Confirm Transfers to save.");
-    }, []); // Removed setUserData from deps
+        // Reset to the original userData state
+        if (userData && allPlayers.length > 0) {
+            const initialSelection = userData.players.map(playerData => {
+                const player = allPlayers.find(p => p.id === playerData.id);
+                return player ? { ...player, onPitch: true } : null; // Treat all as onPitch for display
+            }).filter(Boolean);
+            setSelectedPlayers(initialSelection);
+            setFilters({ search: '', position: 'All', team: 'All', cost: 'All', points: 'All' });
+            setSortOrder({ key: 'totalPoints', direction: 'desc' });
+            alert("Your transfers have been reset locally to your last saved team.");
+        }
+    }, [userData, allPlayers]);
 
     // This function will now save the transfers to userData
     const handleConfirmTransfers = useCallback(() => {
@@ -357,21 +366,26 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
             return;
         }
 
-        const currentBudgetRemaining = (initialBudget - selectedPlayers.reduce((sum, p) => sum + p.cost, 0)).toFixed(1);
+        // When confirming transfers, we need to decide which 11 are on pitch and 4 on bench.
+        // For simplicity, let's assume the first 11 players in selectedPlayers array are on pitch,
+        // and the remaining 4 are on bench. You might want a more sophisticated logic here.
+        const playersToSave = selectedPlayers.map((player, index) => ({
+            id: player.id,
+            onPitch: index < 11 // First 11 are on pitch, rest are bench
+        }));
 
-        // --- MODIFIED: Create the object to be sent to setUserData (updateUserDataInFirestore) ---
-        const dataToSave = {
-            players: selectedPlayers.map(p => p.id),
-            budget: parseFloat(currentBudgetRemaining),
-            // Add any other user data fields you want to explicitly save from Transfers page
-            // e.g., captainId, viceCaptainId if transfers affects them, but typically not.
-            // For now, these are managed in PickTeam.js for MyTeam view.
-        };
-        setUserData(dataToSave); // Pass the object directly to App.js's updateUserDataInFirestore
-        // --- END MODIFIED ---
+        // Calculate the new budget based on the selected players' costs
+        const newBudget = initialBudget - selectedPlayers.reduce((sum, p) => sum + p.cost, 0);
+
+        setUserData({
+            ...userData,
+            players: playersToSave, // Save the updated players array with onPitch status
+            budget: newBudget // Update budget
+            // Captain/Vice-Captain are not managed on this page.
+        });
 
         alert("Transfers confirmed and saved!");
-    }, [selectedPlayers, setUserData, initialBudget, maxPlayers]);
+    }, [selectedPlayers, setUserData, userData, initialBudget, maxPlayers]);
 
     // NEW: Auto Pick functionality for Transfers page
     const handleAutoPickTeam = useCallback(() => {
@@ -412,8 +426,8 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
                     // Check if player can be afforded and adding them won't exceed team limit for the newSquad
                     if (currentBudget >= player.cost &&
                         newSquad.filter(sp => sp.team === player.team).length < maxPlayersPerTeam) {
-                        
-                        newSquad.push(player);
+
+                        newSquad.push({ ...player, onPitch: true }); // Add with onPitch true for display
                         currentBudget = parseFloat((currentBudget - player.cost).toFixed(1));
                         playersAddedCount[pos]++;
                         availableForPos.splice(j, 1); // Remove this player from available list
@@ -422,31 +436,27 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
                     }
                 }
                 if (!playerAdded && newSquad.length < maxPlayers) {
-                    // If no more suitable players for this slot, stop trying for this position
-                    // or for this combination (e.g., too expensive, team limit already hit for remaining players).
                     console.warn(`Could not find an affordable/eligible player for ${pos} slot #${i + 1}`);
                 }
             }
             if (newSquad.length >= maxPlayers) break; // Break outer loop if squad is full
         }
 
-        // Check if the squad is actually full after auto-picking
         if (newSquad.length < maxPlayers) {
             alert(`Auto Pick couldn't fill the entire squad. Filled ${newSquad.length}/${maxPlayers} slots. Please add more players manually.`);
         } else {
              alert(`Auto Pick completed! Squad filled with ${newSquad.length} players. Click Confirm Transfers to save.`);
         }
-       
-        // Update local state, but DO NOT call setUserData (which saves to Firebase) here.
+
         setSelectedPlayers(newSquad);
 
-    }, [allPlayers, initialBudget, maxPlayers, maxPlayersPerTeam]); // Removed userData, setUserData, allTeams from deps.
+    }, [allPlayers, initialBudget, maxPlayers, maxPlayersPerTeam]);
 
     // Function to handle clicks on empty slots to filter player list
     const handlePositionFilterClick = useCallback((positionType) => {
         setFilters(prevFilters => ({
             ...prevFilters,
-            position: positionType === 'SUB' ? 'All' : positionType // Assuming 'SUB' means no specific filter
+            position: positionType === 'SUB' ? 'All' : positionType
         }));
     }, []);
 
@@ -515,7 +525,7 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
                 <TeamDisplayArea>
                     <TeamInfoBar>
                         <p>Your Squad ({selectedPlayers.length}/{maxPlayers})</p>
-                        <p className="budget-display">Budget Remaining: ${userData.budget.toFixed(1)}M</p>
+                        <p className="budget-display">Budget Remaining: ${currentBudgetRemaining}M</p>
                     </TeamInfoBar>
 
                     <SelectedTeamDisplay
@@ -524,13 +534,21 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
-                        budget={userData.budget}
-                        isInitialPick={true}
+                        budget={currentBudgetRemaining}
+                        isInitialPick={true} // Always true for Transfers
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
                         onResetTeam={handleResetTeam}
                         canRemove={true}
                         onPositionClick={handlePositionFilterClick}
                         // No captaincy or substitution props needed for transfers as per image
+                        captainId={null}
+                        viceCaptainId={null}
+                        onSetCaptain={() => {}}
+                        onSetViceCaptain={() => {}}
+                        substitutionMode={false}
+                        playerToSubstitute={null}
+                        onPlayerClickForSubstitution={() => {}}
+                        onToggleSubstitutionMode={() => {}}
                     />
                     <ButtonContainer>
                         <ActionButton onClick={handleAutoPickTeam}>Auto Pick</ActionButton>

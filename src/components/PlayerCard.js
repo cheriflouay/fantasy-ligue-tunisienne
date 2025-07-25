@@ -59,8 +59,8 @@ const ListItem = styled(BaseCard).withConfig({
     font-size: 0.85em;
     cursor: grab;
     opacity: ${props => props.isDragging ? 0.5 : 1};
-    background-color: #2c004a;
-    border: 1px solid #4a005c;
+    background-color: #2c004a; /* Matched to PlayerSelectionArea background */
+    border: 1px solid #4a005c; /* Matched border color */
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     color: white;
@@ -73,17 +73,7 @@ const ListItem = styled(BaseCard).withConfig({
         gap: 8px;
         flex: 3;
         min-width: 120px;
-        /* No specific left margin needed here, as padding on ListItem handles it */
     }
-
-    /* REMOVED: .info-icon styling as the icon is removed */
-    /*
-    .info-icon {
-        color: #6a11cb;
-        font-size: 1em;
-        flex-shrink: 0;
-    }
-    */
 
     .team-logo-small {
         width: 25px;
@@ -158,7 +148,6 @@ function PlayerCard({ player, isAdded, isListView, allTeams }) {
     if (isListView) {
         return (
             <ListItem ref={drag} isDragging={isDragging} isAdded={isAdded}>
-                {/* REMOVED: FontAwesomeIcon for info icon */}
                 <div className="player-main-info">
                     {logoSrc && <img src={logoSrc} alt={teamDetails?.shortName || ''} className="team-logo-small" onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/30x30/cccccc/000000?text=?" }} />}
                     <div className="player-name-and-team">
@@ -174,7 +163,7 @@ function PlayerCard({ player, isAdded, isListView, allTeams }) {
                 </div>
 
                 <div className="points-section">
-                    <span className="stat-value">0</span> {/* Always display 0 for totalPoints */}
+                    <span className="stat-value">{player.totalPoints}</span>
                 </div>
             </ListItem>
         );
@@ -185,7 +174,7 @@ function PlayerCard({ player, isAdded, isListView, allTeams }) {
             <h4>{player.name}</h4>
             <p>{teamDetails?.name || player.team} - {player.position}</p>
             <p className="cost">Cost: ${player.cost.toFixed(1)}M</p>
-            <p className="points">Total Points: 0</p>
+            <p className="points">Total Points: {player.totalPoints}</p>
         </BaseCard>
     );
 }

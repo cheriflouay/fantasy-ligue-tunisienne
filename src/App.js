@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
-import PickTeam from './pages/PickTeam';
+import PickTeam from './pages/PickTeam'; // Will be for initial pick only
+import MyTeam from './pages/MyTeam'; // NEW: For managing existing team
 import Transfers from './pages/Transfers';
 import Fixtures from './pages/Fixtures';
 import Standings from './pages/Standings';
@@ -43,7 +44,7 @@ function App() {
     const [allFixtures, setAllFixtures] = useState([]);
     const [userOverallPoints, setUserOverallPoints] = useState(0);
     const [userRank, setUserRank] = useState(0);
-    const [isInitialTeamSaved, setIsInitialTeamSaved] = useState(0); // Changed to 0 for initial state
+    const [isInitialTeamSaved, setIsInitialTeamSaved] = useState(false); // Changed to boolean
 
     // Firebase states
     const [currentUser, setCurrentUser] = useState(null);
@@ -78,13 +79,16 @@ function App() {
                 const fetchedData = docSnap.data();
                 setUserData(fetchedData);
 
-                const hasSavedTeam = fetchedData.players && fetchedData.players.length === 15;
+                // Check if players array exists and has 15 entries (now objects with onPitch)
+                const hasSavedTeam = fetchedData.players && fetchedData.players.length === 15 &&
+                                     fetchedData.players.every(p => typeof p.onPitch === 'boolean');
                 setIsInitialTeamSaved(hasSavedTeam);
 
+                // Navigate based on whether an initial team is saved
                 if (hasSavedTeam) {
                     setActivePage('dashboard');
                 } else {
-                    setActivePage('pickTeamInitial');
+                    setActivePage('pickTeamInitial'); // New page for initial pick
                 }
                 setUserOverallPoints(fetchedData.totalOverallPoints || 0);
                 setUserRank(fetchedData.overallRank || 'N/A');
@@ -94,9 +98,9 @@ function App() {
                 const initialData = {
                     teamName: "My Team",
                     budget: 100.0,
-                    players: [], // Initially empty
-                    captainId: null, // NEW: Initialize captainId
-                    viceCaptainId: null, // NEW: Initialize viceCaptainId
+                    players: [], // Initially empty, will be filled with {id, onPitch} objects
+                    captainId: null,
+                    viceCaptainId: null,
                     gameweekPoints: 0,
                     totalOverallPoints: 0,
                     overallRank: 'N/A'
@@ -105,7 +109,7 @@ function App() {
                     .then(() => {
                         setUserData(initialData);
                         setIsInitialTeamSaved(false);
-                        setActivePage('pickTeamInitial');
+                        setActivePage('pickTeamInitial'); // Direct new users to initial pick
                     })
                     .catch(error => console.error("Error creating initial user data:", error));
             }
@@ -171,10 +175,9 @@ function App() {
     }, []);
 
     // Custom setUserData that also updates Firestore
+    // This function now expects newData.players to be an array of {id, onPitch} objects
     const updateUserDataInFirestore = useCallback(async (newData) => {
-        // Optimistically update App.js's userData state immediately
-        // Corrected: Pass newData directly to setUserData
-        setUserData(newData); 
+        setUserData(newData); // Optimistically update local state
 
         if (!db || !currentUser) {
             console.warn("Firestore or current user not available to save data.");
@@ -182,14 +185,13 @@ function App() {
         }
         const userDocRef = doc(db, `artifacts/${currentAppId}/users/${currentUser.uid}/profile/data`);
         try {
-            await setDoc(userDocRef, newData, { merge: true });
+            // Ensure newData.players is an array of objects before saving
+            const playersToSave = newData.players.map(p => ({ id: p.id, onPitch: p.onPitch }));
+            await setDoc(userDocRef, { ...newData, players: playersToSave }, { merge: true });
         } catch (error) {
-            // Check if the error message matches the specific "invalid data: function" error
             if (error.message && error.message.includes("Function setDoc() called with invalid data. Data must be an object, but it was: a function")) {
-                // Suppress this specific error from console.error and alert
                 console.warn("Firebase setDoc received unexpected function, but operation appears successful. Suppressing this specific error log.");
             } else {
-                // Log other types of errors normally
                 console.error("Error saving user data to Firestore:", error);
                 alert("Failed to save changes to the cloud. Please try again.");
             }
@@ -252,7 +254,8 @@ function App() {
         }
     }, [auth]);
 
-    // Function to handle the initial team save
+    // Function to handle the initial team save from PickTeam.js
+    // Expects squadPlayers to be an array of player objects with 'id' and 'onPitch'
     const handleInitialTeamSave = useCallback(async (squadPlayers, finalBudget) => {
         if (!currentUser || !db) {
             console.error("User not authenticated or database not ready to save team.");
@@ -260,19 +263,23 @@ function App() {
         }
         const userDocRef = doc(db, `artifacts/${currentAppId}/users/${currentUser.uid}/profile/data`);
         try {
+            // Map players to only save id and onPitch status
+            const playersToSave = squadPlayers.map(p => ({ id: p.id, onPitch: p.onPitch }));
+
             await setDoc(userDocRef, {
-                players: squadPlayers.map(p => p.id),
+                players: playersToSave,
                 budget: parseFloat(finalBudget),
-                // Captain and Vice-Captain are NOT saved during initial team pick
-                // They will be saved with 'Save Lineup Changes'
+                // Initial team pick does not set captain/vice-captain yet
+                captainId: null,
+                viceCaptainId: null,
             }, { merge: true });
             setIsInitialTeamSaved(true);
-            setActivePage('dashboard');
+            setActivePage('dashboard'); // Navigate to dashboard after initial save
         } catch (error) {
             console.error("Error saving initial team:", error);
             alert("Failed to save team. Please try again.");
         }
-    }, [currentUser, db, currentAppId]);
+    }, [currentUser, db, currentAppId, setActivePage]);
 
 
     const renderPage = () => {
@@ -293,6 +300,7 @@ function App() {
             return <div style={{ textAlign: 'center', padding: '50px', fontSize: '1.5em', color: 'white' }}>Loading user data...</div>;
         }
 
+        // If initial team is not saved, force user to PickTeam
         if (!isInitialTeamSaved) {
             return (
                 <PickTeam
@@ -300,26 +308,25 @@ function App() {
                     allPlayers={allPlayers}
                     allTeams={allTeams}
                     allFixtures={allFixtures}
-                    setUserData={updateUserDataInFirestore}
-                    isInitialPick={true}
-                    onInitialSave={handleInitialTeamSave}
+                    setUserData={updateUserDataInFirestore} // This is the general update function
+                    onInitialSave={handleInitialTeamSave} // Specific for initial save
                     currentUser={currentUser}
                 />
             );
         }
 
+        // If initial team is saved, allow navigation to other pages
         switch (activePage) {
             case 'dashboard':
                 return <Dashboard userData={userData} />;
             case 'myTeam':
                 return (
-                    <PickTeam
+                    <MyTeam // Render MyTeam component
                         userData={userData}
                         allPlayers={allPlayers}
                         allTeams={allTeams}
                         allFixtures={allFixtures}
                         setUserData={updateUserDataInFirestore}
-                        isInitialPick={false}
                         currentUser={currentUser}
                     />
                 );
