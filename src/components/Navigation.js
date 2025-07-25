@@ -7,11 +7,13 @@ const NavigationContainer = styled.nav`
     padding: 10px 0;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     display: flex;
-    justify-content: center;
+    justify-content: center; /* Changed to flex-start to allow space for logout on right */
     gap: 30px;
     flex-wrap: wrap;
     position: relative; /* Needed for active indicator positioning */
     z-index: 1; /* Ensure it's above other elements if needed */
+    padding-right: 20px; /* Add some padding on the right for the logout button */
+    padding-left: 20px; /* Add some padding on the left */
 `;
 
 const NavItem = styled.button`
@@ -51,7 +53,20 @@ const NavItem = styled.button`
     }
 `;
 
-function Navigation({ setActivePage, activePage, isInitialTeamSaved }) {
+const LogoutButton = styled(NavItem)`
+    margin-left: auto; /* Pushes the button to the far right */
+    background-color: #e74c3c; /* Red color for logout */
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    &:hover {
+        background-color: #c0392b;
+        transform: translateY(-2px);
+    }
+`;
+
+function Navigation({ setActivePage, activePage, isInitialTeamSaved, onLogout }) {
     return (
         <NavigationContainer>
             <NavItem
@@ -92,6 +107,7 @@ function Navigation({ setActivePage, activePage, isInitialTeamSaved }) {
             >
                 Player Details
             </NavItem> */}
+            {onLogout && <LogoutButton onClick={onLogout}>Logout</LogoutButton>}
         </NavigationContainer>
     );
 }

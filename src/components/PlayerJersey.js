@@ -387,7 +387,7 @@ const SubBadge = styled.div`
 `;
 
 
-function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) { // Re-added substitution props
+function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onToggleSubstitutionMode }) { // Re-added substitution props
     const itemType = 'player';
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -461,22 +461,23 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                         <div className="player-name-box">{displayName}</div>
                         {/* NEW: Container for fixture and C/VC badges */}
                         <div className="fixture-and-badges-container">
-                            {isViceCaptain && <InlineViceCaptainBadge>VC</InlineViceCaptainBadge>}
+                            {/* Only show C/VC badges if NOT initial pick (My Team page) */}
+                            {!isInitialPick && isViceCaptain && <InlineViceCaptainBadge>VC</InlineViceCaptainBadge>}
                             <span className="fixture-item">
                                 {displayFixture}
                             </span>
-                            {isCaptain && <InlineCaptainBadge>C</InlineCaptainBadge>}
+                            {!isInitialPick && isCaptain && <InlineCaptainBadge>C</InlineCaptainBadge>}
                         </div>
 
-                        {/* Conditionally render Remove button */}
-                        {canRemove && !substitutionMode && ( // Re-added !substitutionMode
+                        {/* Conditionally render Remove button - always show on Transfers, only if canRemove on MyTeam */}
+                        {canRemove && ( // canRemove is true for Transfers, controlled by parent for My Team
                             <button className="remove-button" onClick={(e) => { e.stopPropagation(); onRemove(player); }}>
                                 <FontAwesomeIcon icon={faTimes} />
                             </button>
                         )}
 
-                        {/* Substitution button on PlayerJersey - RESTORED */}
-                        {!isInitialPick && ( // Show on both pitch and bench players on My Team page
+                        {/* Substitution button on PlayerJersey - Only show if NOT initial pick */}
+                        {!isInitialPick && (
                             <button
                                 className="substitution-button"
                                 onClick={(e) => {
@@ -492,9 +493,8 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
 
                         {isBench && !isInitialPick && <SubBadge>SUB</SubBadge>}
 
-                        {/* Captaincy buttons (hidden, as badges are now inline) */}
-                        {/* These buttons are for setting C/VC, not displaying. Keep them for functionality. */}
-                        {player && !isBench && !isInitialPick && !substitutionMode && ( // Re-added !substitutionMode
+                        {/* Captaincy buttons (hidden, as badges are now inline) - Only show if NOT initial pick */}
+                        {player && !isBench && !isInitialPick && (
                             <CaptaincyButtons>
                                 <button
                                     className={isCaptain ? 'active' : ''}

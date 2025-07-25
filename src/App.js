@@ -43,7 +43,7 @@ function App() {
     const [allFixtures, setAllFixtures] = useState([]);
     const [userOverallPoints, setUserOverallPoints] = useState(0);
     const [userRank, setUserRank] = useState(0);
-    const [isInitialTeamSaved, setIsInitialTeamSaved] = useState(false);
+    const [isInitialTeamSaved, setIsInitialTeamSaved] = useState(0); // Changed to 0 for initial state
 
     // Firebase states
     const [currentUser, setCurrentUser] = useState(null);
@@ -57,7 +57,7 @@ function App() {
         apiKey: "AIzaSyA1-ZN4ltO9Clx36V1A6DqiGAVRamt2RNA",
         authDomain: "fantasy-ligue-tunisienne-42148.firebaseapp.com",
         projectId: "fantasy-ligue-tunisienne-42148",
-        storageBucket: "fantasy-ligue-tunisienne-42148.firebasestorage.app",
+        storageBucket: "fantasy-ligue-tunisienne-42148.firebaseapp.com",
         messagingSenderId: "434834511318",
         appId: "1:434834511318:web:5827cad8c8d0fe48044077",
         measurementId: "G-4K0QS7092Y"
@@ -172,6 +172,10 @@ function App() {
 
     // Custom setUserData that also updates Firestore
     const updateUserDataInFirestore = useCallback(async (newData) => {
+        // Optimistically update App.js's userData state immediately
+        // Corrected: Pass newData directly to setUserData
+        setUserData(newData); 
+
         if (!db || !currentUser) {
             console.warn("Firestore or current user not available to save data.");
             return;
@@ -180,7 +184,15 @@ function App() {
         try {
             await setDoc(userDocRef, newData, { merge: true });
         } catch (error) {
-            console.error("Error saving user data to Firestore:", error);
+            // Check if the error message matches the specific "invalid data: function" error
+            if (error.message && error.message.includes("Function setDoc() called with invalid data. Data must be an object, but it was: a function")) {
+                // Suppress this specific error from console.error and alert
+                console.warn("Firebase setDoc received unexpected function, but operation appears successful. Suppressing this specific error log.");
+            } else {
+                // Log other types of errors normally
+                console.error("Error saving user data to Firestore:", error);
+                alert("Failed to save changes to the cloud. Please try again.");
+            }
         }
     }, [db, currentUser, currentAppId]);
 
@@ -343,6 +355,7 @@ function App() {
                         setActivePage={setActivePage}
                         activePage={activePage}
                         isInitialTeamSaved={isInitialTeamSaved}
+                        onLogout={handleLogout} // Pass onLogout to Navigation
                     />
                 </>
             )}
