@@ -2,7 +2,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSearch, faChevronDown, faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons'; // Removed faSearch
 
 const FilterContainer = styled.div`
     background-color: #1a002b;
@@ -18,7 +18,7 @@ const SearchBar = styled.div`
 
     input {
         width: 100%;
-        padding: 10px 10px 10px 20px;
+        padding: 10px; /* MODIFIED: Removed left padding for icon */
         border: 1px solid #4a005c;
         border-radius: 5px;
         background-color: #33004a;
@@ -30,6 +30,8 @@ const SearchBar = styled.div`
         }
     }
 
+    /* REMOVED: .search-icon styling as the icon is removed */
+    /*
     .search-icon {
         position: absolute;
         left: 8px;
@@ -37,6 +39,7 @@ const SearchBar = styled.div`
         transform: translateY(-50%);
         color: #ccc;
     }
+    */
 `;
 
 const FilterButtons = styled.div`
@@ -72,7 +75,6 @@ const FilterButtons = styled.div`
 
 
 const PlayersShownBar = styled.div`
-    /* MODIFIED: Changed background to solid color matching image_c43aad.png */
     background-color: #6a11cb; /* Solid purple/blue color */
     color: white; /* Text color */
     padding: 10px;
@@ -80,7 +82,6 @@ const PlayersShownBar = styled.div`
     text-align: center;
     font-weight: bold;
     margin-bottom: 15px;
-    /* Removed properties that might give it a 'scrollbar' look if not needed */
 `;
 
 const SortButton = styled.button`
@@ -126,7 +127,7 @@ function PlayerSearchFilter({ filters, setFilters, allTeams, setSortOrder, sortO
     return (
         <FilterContainer>
             <SearchBar>
-                <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                {/* REMOVED: FontAwesomeIcon for search icon */}
                 <input
                     type="text"
                     name="search"

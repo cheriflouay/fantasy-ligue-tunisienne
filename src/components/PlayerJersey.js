@@ -3,11 +3,11 @@ import React, { useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTimes, faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes, faExchangeAlt } from '@fortawesome/free-solid-svg-icons'; // Re-added faExchangeAlt
 
-const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop filtering
+const JerseyContainer = styled.div.withConfig({
   shouldForwardProp: (prop) =>
-    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage', 'isCaptain', 'isViceCaptain', 'isInitialPick', 'isPlayerToSubstitute'].includes(prop) // Added isPlayerToSubstitute
+    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage', 'isCaptain', 'isViceCaptain', 'isInitialPick', 'isPlayerToSubstitute'].includes(prop) // Re-added isPlayerToSubstitute
 })`
     background-color: transparent;
     border-radius: 8px;
@@ -61,9 +61,8 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
 
         &:hover {
             border-color: #fff;
-            color: #fff;
-            .plus-icon {
-                color: #fff;
+            .slot-position-abbr, .plus-icon {
+              color: #fff;
             }
         }
 
@@ -170,14 +169,6 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
         white-space: nowrap; /* Prevent wrapping */
     }
 
-    /* REMOVED: Specific red/green backgrounds for fixture items */
-    .fixture-item {
-        background-color: transparent; /* No individual background, use parent's */
-        padding: 0; /* Remove padding from individual item */
-        border-radius: 0; /* Remove border-radius from individual item */
-        font-size: 1em; /* Reset font size within fixture box to inherit */
-    }
-
 
     .remove-button {
         position: absolute;
@@ -217,7 +208,7 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
         }
     }
 
-    /* NEW: Substitution button styling (moved to top-right) */
+    /* Substitution button styling */
     .substitution-button {
         position: absolute;
         top: -8px; /* Position relative to jersey container */
@@ -308,35 +299,6 @@ const JerseyContainer = styled.div.withConfig({ // Added .withConfig for prop fi
     `}
 `;
 
-/* REMOVED: Old CaptainBadge and ViceCaptainBadge styled components */
-/*
-const CaptainBadge = styled.div`
-    position: absolute;
-    bottom: -10px;
-    right: 5px;
-    background-color: #FFD700;
-    color: #333;
-    border: 2px solid #ffffff;
-    border-radius: 5px;
-    width: 24px;
-    height: 18px;
-    font-size: 0.7em;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-`;
-
-const ViceCaptainBadge = styled(CaptainBadge)`
-    background-color: #A9A9A9;
-    color: white;
-    right: auto;
-    left: 5px;
-`;
-*/
-
 /* NEW: Inline Captain/Vice-Captain Badges - MODIFIED STYLING AND ORDER */
 const InlineCaptainBadge = styled.span`
     background-color: #FFD700; /* Gold color for Captain */
@@ -424,43 +386,23 @@ const SubBadge = styled.div`
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 `;
 
-// REMOVED: XPBadge as requested
-/*
-const XPBadge = styled.div`
-    position: absolute;
-    top: -10px;
-    left: 15px;
-    background-color: #7f8c8d;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 5px;
-    font-size: 0.7em;
-    font-weight: bold;
-    z-index: 10;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 3px;
-`;
-*/
 
-
-function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) {
+function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) { // Re-added substitution props
     const itemType = 'player';
 
     const [{ isDragging }, drag] = useDrag(() => ({
         type: itemType,
-        item: { player, currentPosition: position },
+        item: { player, currentPosition: position, isBench: isBench }, // Pass isBench status with dragged item
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
-    }), [player, position]);
+    }), [player, position, isBench]);
 
     const [{ isOver }, drop] = useDrop(() => ({
         accept: itemType,
         drop: (draggedItem) => {
+            // Drop logic remains for drag-and-drop only
             if (draggedItem.player.id === player?.id) return;
-
             onMovePlayer(draggedItem.player, player, position);
         },
         collect: (monitor) => ({
@@ -484,12 +426,8 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
         return nameParts[0];
     }, [player]);
 
-    const isPlayerSelectedForSubstitution = player && playerToSubstitute && player.id === playerToSubstitute.id;
+    const isPlayerSelectedForSubstitution = player && playerToSubstitute && player.id === playerToSubstitute.id; // Re-added
 
-    // Removed playerXP as XPBadge is removed
-    // const playerXP = player ? (player.xp || (Math.random() * 5 + 1).toFixed(1)) : null;
-
-    // Use the actual playerFixtures prop, and display only the first one if it exists
     const displayFixture = playerFixtures ? playerFixtures : 'N/A';
 
 
@@ -502,14 +440,14 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
             isBench={isBench}
             jerseyImage={jerseySrc}
             onClick={() => {
-                if (substitutionMode && player) {
-                    onPlayerClickForSubstitution(player, isBench);
-                } else if (!player) {
+                // If there's no player in this slot, allow position click (for adding)
+                if (!player) {
                     onPositionClick(position);
                 }
+                // Clicks on players are now handled by the substitution button or drag-and-drop
             }}
             isInitialPick={isInitialPick}
-            isPlayerToSubstitute={isPlayerSelectedForSubstitution}
+            isPlayerToSubstitute={isPlayerSelectedForSubstitution} // Re-added
         >
             {player ? (
                 <>
@@ -517,7 +455,7 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                     <div className="jersey-content">
                         <div className="top-info">
                             <span className="team-abbr">{teamDetails?.shortName || player.team}</span>
-                            <span className="player-cost">${player.cost.toFixed(1)}</span>
+                            <span className="player-cost">${player.cost.toFixed(1)}M</span>
                         </div>
                         {/* Player Name Box */}
                         <div className="player-name-box">{displayName}</div>
@@ -531,30 +469,32 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                         </div>
 
                         {/* Conditionally render Remove button */}
-                        {canRemove && !substitutionMode && (
+                        {canRemove && !substitutionMode && ( // Re-added !substitutionMode
                             <button className="remove-button" onClick={(e) => { e.stopPropagation(); onRemove(player); }}>
                                 <FontAwesomeIcon icon={faTimes} />
                             </button>
                         )}
 
-                        {/* Substitution button on PlayerJersey */}
+                        {/* Substitution button on PlayerJersey - RESTORED */}
                         {!isInitialPick && ( // Show on both pitch and bench players on My Team page
                             <button
                                 className="substitution-button"
-                                onClick={(e) => { e.stopPropagation(); onToggleSubstitutionMode(); }}
-                                style={{ backgroundColor: substitutionMode ? 'var(--secondary-red)' : '#007bff' }}
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent triggering parent onClick
+                                    // Pass the player object to onToggleSubstitutionMode
+                                    onToggleSubstitutionMode(player);
+                                }}
+                                style={{ backgroundColor: isPlayerSelectedForSubstitution ? '#FFD700' : '#007bff' }} // Highlight selected player's sub button
                             >
                                 <FontAwesomeIcon icon={faExchangeAlt} />
                             </button>
                         )}
 
-                        {/* Removed XP Badge */}
-
                         {isBench && !isInitialPick && <SubBadge>SUB</SubBadge>}
 
                         {/* Captaincy buttons (hidden, as badges are now inline) */}
                         {/* These buttons are for setting C/VC, not displaying. Keep them for functionality. */}
-                        {player && !isBench && !isInitialPick && !substitutionMode && (
+                        {player && !isBench && !isInitialPick && !substitutionMode && ( // Re-added !substitutionMode
                             <CaptaincyButtons>
                                 <button
                                     className={isCaptain ? 'active' : ''}
