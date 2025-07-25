@@ -1,5 +1,5 @@
 // src/components/SelectedTeamDisplay.js
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect } from 'react'; // Removed useMemo
 import styled from 'styled-components';
 import { useDrop } from 'react-dnd';
 import PlayerJersey from './PlayerJersey';
@@ -8,7 +8,6 @@ import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
 // Styled components for the pitch elements
 const PitchContainer = styled.div`
-  /* MODIFIED: Pitch background and border to match image */
   background-color: #005d00; /* Darker green for the pitch */
   border-radius: 10px;
   padding: 10px;
@@ -24,7 +23,6 @@ const PitchContainer = styled.div`
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   border: 4px solid #004d00; /* Darker border to blend with background */
   box-sizing: border-box; /* Include padding/border in total width/height */
-
 
   @media (max-width: 768px) {
     min-height: 250px;
@@ -162,11 +160,10 @@ const EmptySlot = styled.div`
 `;
 
 const BenchContainer = styled.div`
-  /* NEW STYLING FOR BENCH CONTAINER */
   background-color: #2c3e50; /* Dark blue-grey background from image_b7e1e1.png */
   border-radius: 10px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  padding: 15px 20px; /* Adjusted padding to match image more closely */
+  padding: 15px 20px;
   width: 96%;
   max-width: 900px;
   text-align: center;
@@ -190,33 +187,31 @@ const BenchContainer = styled.div`
   }
 `;
 
-// NEW: Styled component for the wrapper around each bench player to add position label
 const BenchPlayerWrapper = styled.div`
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px; /* Space between label and jersey */
-    position: relative; /* For absolute positioning of position label if needed */
+    gap: 5px;
+    position: relative;
 `;
 
-// NEW: Styled component for the position label on the bench
 const BenchPositionLabel = styled.div`
-    background-color: #34495e; /* Dark background, same as player name/fixture boxes */
+    background-color: #34495e;
     color: white;
     font-weight: bold;
     padding: 4px 8px;
     border-radius: 5px;
-    font-size: 0.8em; /* Slightly smaller than player name box */
+    font-size: 0.8em;
     text-transform: uppercase;
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    min-width: 50px; /* Ensure consistent width */
+    min-width: 50px;
     text-align: center;
 `;
 
 
 export const ButtonContainer = styled.div`
   display: flex;
-  justify-content: center; /* Ensures buttons are centered horizontally */
+  justify-content: center;
   gap: 20px;
   margin-top: 20px;
   width: 100%;
@@ -250,13 +245,41 @@ export const ActionButton = styled.button`
   }
 `;
 
+const FormationSelector = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #1a002b;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+`;
+
+const FormationButton = styled.button`
+    background-color: ${props => props.active ? '#6a11cb' : '#33004a'};
+    color: white;
+    border: 1px solid ${props => props.active ? '#884dff' : '#4a005c'};
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background-color: ${props => props.active ? '#5a009a' : '#4a005c'};
+        transform: translateY(-1px);
+    }
+`;
+
 
 // eslint-disable-next-line no-unused-vars
 const EmptyDropTarget = ({ positionType, onPlayerDrop, onPositionClick }) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'player',
     drop: (draggedItem) => {
-      // Allow dropping any player type into Bench, or correct position type onto pitch slot
       if (positionType === "Bench" || draggedItem.player.position === positionType) {
         onPlayerDrop(draggedItem.player, null, positionType);
       } else {
@@ -285,7 +308,19 @@ const EmptyDropTarget = ({ positionType, onPlayerDrop, onPositionClick }) => {
 };
 
 
-function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, allAvailablePlayers, onUpdateSelectedPlayers, onResetTeam, captainId, viceCaptainId, onSetCaptain, onSetViceCaptain, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) {
+// Define formation rules
+const FORMATION_RULES = {
+    '4-4-2': { Goalkeeper: 1, Defender: 4, Midfielder: 4, Forward: 2, Bench: 4 },
+    '4-3-3': { Goalkeeper: 1, Defender: 4, Midfielder: 3, Forward: 3, Bench: 4 },
+    '4-5-1': { Goalkeeper: 1, Defender: 4, Midfielder: 5, Forward: 1, Bench: 4 },
+    '3-5-2': { Goalkeeper: 1, Defender: 3, Midfielder: 5, Forward: 2, Bench: 4 },
+    '3-4-3': { Goalkeeper: 1, Defender: 3, Midfielder: 4, Forward: 3, Bench: 4 },
+    '5-3-2': { Goalkeeper: 1, Defender: 5, Midfielder: 3, Forward: 2, Bench: 4 },
+    '5-4-1': { Goalkeeper: 1, Defender: 5, Midfielder: 4, Forward: 1, Bench: 4 },
+};
+
+
+function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, onUpdateSelectedPlayers, captainId, viceCaptainId, onSetCaptain, onSetViceCaptain, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) {
   const [startingXI, setStartingXI] = useState({
     Goalkeeper: [],
     Defender: [],
@@ -293,24 +328,11 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
     Forward: []
   });
   const [benchPlayers, setBenchPlayers] = useState([]);
-
-  const initialFormationSlots = useMemo(() => ({
-    Goalkeeper: 2,
-    Defender: 5,
-    Midfielder: 5,
-    Forward: 3
-  }), []);
-
-  const regularFormationSlots = useMemo(() => ({
-    Goalkeeper: 1,
-    Defender: 4,
-    Midfielder: 4,
-    Forward: 2,
-    Bench: 4
-  }), []);
+  const [currentFormationKey, setCurrentFormationKey] = useState('4-4-2'); // Default formation
 
   const maxSquadSize = 15;
 
+  // Helper to get next fixture
   const getNextFixtureForTeam = useCallback((teamId) => {
     if (!allFixtures || allFixtures.length === 0) return 'N/A';
 
@@ -335,102 +357,233 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
     return 'N/A';
   }, [allFixtures, allTeams]);
 
-
-  useEffect(() => {
-    const newStartingXI = {
-      Goalkeeper: [],
-      Defender: [],
-      Midfielder: [],
-      Forward: []
-    };
-    let newBenchPlayers = [];
-
-    const mutableSelectedPlayers = [...selectedPlayers];
-
-    const currentFormationLimits = isInitialPick ? initialFormationSlots : regularFormationSlots;
-
-    const playersByPosition = {
-      Goalkeeper: mutableSelectedPlayers.filter(p => p && p.position === 'Goalkeeper'),
-      Defender: mutableSelectedPlayers.filter(p => p && p.position === 'Defender'),
-      Midfielder: mutableSelectedPlayers.filter(p => p && p.position === 'Midfielder'),
-      Forward: mutableSelectedPlayers.filter(p => p && p.position === 'Forward')
-    };
-
-    for (const posType in currentFormationLimits) {
-        if (posType === 'Bench') continue;
-
-        const limit = currentFormationLimits[posType];
-        const playersForThisPosition = playersByPosition[posType].slice(0, limit);
-        newStartingXI[posType] = Array.from({ length: limit }, (_, i) => playersForThisPosition[i] || null);
+  // Helper to distribute players based on a given formation key
+  const distributePlayersByFormation = useCallback((allPlayersInSquad, formationKey) => {
+    const formationRules = FORMATION_RULES[formationKey];
+    if (!formationRules) {
+      console.error(`Invalid formation key: ${formationKey}`);
+      return { pitch: { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [] }, bench: [] };
     }
 
-    if (!isInitialPick) {
-        const remainingPlayers = [
-            ...playersByPosition.Goalkeeper.slice(currentFormationLimits.Goalkeeper),
-            ...playersByPosition.Defender.slice(currentFormationLimits.Defender),
-            ...playersByPosition.Midfielder.slice(currentFormationLimits.Midfielder),
-            ...playersByPosition.Forward.slice(currentFormationLimits.Forward)
-        ];
-        newBenchPlayers = remainingPlayers.slice(0, currentFormationLimits.Bench);
+    const newPitch = { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [] };
+    let newBench = [];
+    const usedPlayerIds = new Set();
 
-        while (newBenchPlayers.length < currentFormationLimits.Bench) {
-            newBenchPlayers.push(null);
+    // Prioritize Goalkeeper
+    const gkp = allPlayersInSquad.find(p => p && p.position === 'Goalkeeper');
+    if (gkp && newPitch.Goalkeeper.length < formationRules.Goalkeeper) {
+        newPitch.Goalkeeper.push(gkp);
+        usedPlayerIds.add(gkp.id);
+    }
+
+    // Fill pitch positions for Defenders, Midfielders, Forwards
+    ['Defender', 'Midfielder', 'Forward'].forEach(posType => {
+      const playersOfPos = allPlayersInSquad.filter(p => p && p.position === posType && !usedPlayerIds.has(p.id));
+      for (let i = 0; i < formationRules[posType]; i++) {
+        if (playersOfPos[i]) {
+          newPitch[posType].push(playersOfPos[i]);
+          usedPlayerIds.add(playersOfPos[i].id);
+        } else {
+          newPitch[posType].push(null); // Fill with null for empty slots
         }
+      }
+    });
+
+    // Add remaining players to bench
+    allPlayersInSquad.forEach(player => {
+      if (player && !usedPlayerIds.has(player.id)) {
+        newBench.push(player);
+      }
+    });
+
+    // Fill remaining pitch slots with nulls if not enough players
+    ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].forEach(posType => {
+        while (newPitch[posType].length < formationRules[posType]) {
+            newPitch[posType].push(null);
+        }
+    });
+
+    // Ensure bench has correct number of empty slots if less than max
+    while (newBench.length < formationRules.Bench) {
+        newBench.push(null);
     }
 
-    setStartingXI(newStartingXI);
-    setBenchPlayers(newBenchPlayers);
+    // Trim bench if it exceeds max bench size
+    newBench = newBench.slice(0, formationRules.Bench);
 
-  }, [selectedPlayers, isInitialPick, initialFormationSlots, regularFormationSlots]);
+    return { pitch: newPitch, bench: newBench };
+  }, []);
+
+  // Helper to get current pitch composition (counts of each position on pitch)
+  const getPitchComposition = useCallback((currentPitch) => {
+    const composition = {
+      Goalkeeper: 0,
+      Defender: 0,
+      Midfielder: 0,
+      Forward: 0,
+    };
+    Object.values(currentPitch).flat().forEach(player => {
+      if (player) {
+        composition[player.position]++;
+      }
+    });
+    return composition;
+  }, []);
+
+  // Helper to find a matching formation from rules based on pitch composition
+  const findMatchingFormation = useCallback((pitchComposition) => {
+    for (const key in FORMATION_RULES) {
+      const rule = FORMATION_RULES[key];
+      // Check if the number of players for each position matches the rule
+      if (
+        pitchComposition.Goalkeeper === rule.Goalkeeper &&
+        pitchComposition.Defender === rule.Defender &&
+        pitchComposition.Midfielder === rule.Midfielder &&
+        pitchComposition.Forward === rule.Forward
+      ) {
+        return key; // Found a matching formation
+      }
+    }
+    return null; // No matching formation found
+  }, []);
+
+
+  // Effect to update pitch and bench whenever selectedPlayers or currentFormationKey changes
+  useEffect(() => {
+    if (isInitialPick) {
+      // For initial pick, just populate based on position, no strict formation yet
+      const { pitch: distributedPitch, bench: distributedBench } = distributePlayersByFormation(selectedPlayers, '4-4-2'); // Removed defaultInitialFormation
+      setStartingXI(distributedPitch);
+      setBenchPlayers(distributedBench);
+
+    } else {
+      // For regular team display, distribute based on currentFormationKey
+      const { pitch: distributedPitch, bench: distributedBench } = distributePlayersByFormation(selectedPlayers, currentFormationKey);
+      setStartingXI(distributedPitch);
+      setBenchPlayers(distributedBench);
+    }
+  }, [selectedPlayers, currentFormationKey, isInitialPick, distributePlayersByFormation]);
 
 
   const handlePlayerMoveInSquad = useCallback((draggedPlayer, targetPlayer, targetPositionType) => {
     let newSelectedPlayers = [...selectedPlayers];
+    const draggedPlayerCurrentIndex = newSelectedPlayers.findIndex(p => p && p.id === draggedPlayer.id);
 
-    if (!newSelectedPlayers.some(p => p.id === draggedPlayer.id)) {
-        if (newSelectedPlayers.length < maxSquadSize) {
-            if (isInitialPick || draggedPlayer.position === targetPositionType || targetPositionType === "Bench") {
-                onPlayerDrop(draggedPlayer, null, targetPositionType);
-            } else {
-                console.warn(`Cannot place a ${draggedPlayer.position} in a ${targetPositionType} slot.`);
-            }
-        } else {
-            console.warn("Squad is full! Cannot add more players directly by drop.");
-        }
-        return;
+    // Case 1: Player dragged from outside (player list) into pitch/bench
+    if (draggedPlayerCurrentIndex === -1) {
+      if (newSelectedPlayers.length < maxSquadSize) {
+        // Add player to the squad, then re-distribute
+        newSelectedPlayers = [...newSelectedPlayers, draggedPlayer];
+        onUpdateSelectedPlayers(newSelectedPlayers); // Let parent handle budget/player list update
+      } else {
+        alert("Squad is full! Cannot add more players.");
+      }
+      return;
     }
 
-    const draggedIdx = newSelectedPlayers.findIndex(p => p && p.id === draggedPlayer.id);
+    // Create a temporary squad to test the move
+    let tempSelectedPlayers = [...newSelectedPlayers];
 
-    if (targetPlayer) {
-        const targetIdx = newSelectedPlayers.findIndex(p => p && p.id === targetPlayer.id);
+    if (targetPlayer) { // Swapping players
+      const targetPlayerCurrentIndex = tempSelectedPlayers.findIndex(p => p && p.id === targetPlayer.id);
 
-        if (draggedIdx !== -1 && targetIdx !== -1) {
-            if (isInitialPick || draggedPlayer.position === targetPlayer.position ||
-                targetPositionType === "Bench" || draggedPlayer.position === "Goalkeeper") {
-                 [newSelectedPlayers[draggedIdx], newSelectedPlayers[targetIdx]] =
-                 [newSelectedPlayers[targetIdx], newSelectedPlayers[draggedIdx]];
-                 onUpdateSelectedPlayers(newSelectedPlayers);
-            } else {
-                console.warn(`Cannot swap ${draggedPlayer.position} with ${targetPlayer.position} directly on pitch.`);
-            }
-        }
+      // Perform the swap in the temporary array
+      if (draggedPlayerCurrentIndex !== -1 && targetPlayerCurrentIndex !== -1) {
+        [tempSelectedPlayers[draggedPlayerCurrentIndex], tempSelectedPlayers[targetPlayerCurrentIndex]] =
+        [tempSelectedPlayers[targetPlayerCurrentIndex], tempSelectedPlayers[draggedPlayerCurrentIndex]];
+      }
+    } else { // Moving to an empty slot or just re-ordering on bench
+        // Remove dragged player from current position
+        tempSelectedPlayers = tempSelectedPlayers.filter(p => p.id !== draggedPlayer.id);
+        // Add dragged player to the end (or specific target if needed, but for now simple add)
+        tempSelectedPlayers.push(draggedPlayer);
+    }
+
+    // Now, try to distribute these temp players into the *current* formation
+    const { pitch: potentialPitch } = distributePlayersByFormation(tempSelectedPlayers, currentFormationKey); // Removed potentialBench
+
+    // Check if the potential pitch is valid for the current formation
+    const currentFormationRules = FORMATION_RULES[currentFormationKey];
+    const potentialPitchComposition = getPitchComposition(potentialPitch);
+
+    let isValidMoveForCurrentFormation = true;
+    if (potentialPitchComposition.Goalkeeper > currentFormationRules.Goalkeeper ||
+        potentialPitchComposition.Defender > currentFormationRules.Defender ||
+        potentialPitchComposition.Midfielder > currentFormationRules.Midfielder ||
+        potentialPitchComposition.Forward > currentFormationRules.Forward) {
+        isValidMoveForCurrentFormation = false;
+    }
+
+    if (!isValidMoveForCurrentFormation) {
+        alert(`Cannot make this move in a ${currentFormationKey} formation. Please select a different formation or adjust your squad.`);
+        return; // Prevent the invalid move
+    }
+
+
+    // If the move is valid for the current formation, update selectedPlayers
+    onUpdateSelectedPlayers(tempSelectedPlayers);
+
+    // Now, check if this valid move results in a new valid formation
+    const newPitchComposition = getPitchComposition(potentialPitch);
+    const newMatchingFormationKey = findMatchingFormation(newPitchComposition);
+
+    if (newMatchingFormationKey && newMatchingFormationKey !== currentFormationKey) {
+        // If a new formation is detected, update the currentFormationKey
+        setCurrentFormationKey(newMatchingFormationKey);
+        console.log(`Formation automatically changed to: ${newMatchingFormationKey}`);
+        // Optionally, show a subtle message to the user about the formation change
+    }
+
+  }, [selectedPlayers, maxSquadSize, onUpdateSelectedPlayers, distributePlayersByFormation, currentFormationKey, getPitchComposition, findMatchingFormation]);
+
+
+  // Handler for explicit formation selection
+  const handleFormationSelection = useCallback((newFormationKey) => {
+    // Attempt to distribute current players into the new formation
+    const { pitch: testPitch } = distributePlayersByFormation(selectedPlayers, newFormationKey); // Removed testBench
+    const testPitchComposition = getPitchComposition(testPitch);
+    const rulesForNewFormation = FORMATION_RULES[newFormationKey];
+
+    // Check if the new formation can be formed with the current players
+    const canFormNewFormation =
+        testPitchComposition.Goalkeeper === rulesForNewFormation.Goalkeeper &&
+        testPitchComposition.Defender === rulesForNewFormation.Defender &&
+        testPitchComposition.Midfielder === rulesForNewFormation.Midfielder &&
+        testPitchComposition.Forward === rulesForNewFormation.Forward &&
+        (testPitchComposition.Goalkeeper + testPitchComposition.Defender + testPitchComposition.Midfielder + testPitchComposition.Forward) === 11;
+
+    if (canFormNewFormation) {
+      setCurrentFormationKey(newFormationKey);
     } else {
-        if (draggedIdx !== -1) {
-            const filteredPlayers = newSelectedPlayers.filter(p => p.id !== draggedPlayer.id);
-            if (isInitialPick || draggedPlayer.position === targetPositionType || targetPositionType === "Bench") {
-                onUpdateSelectedPlayers([...filteredPlayers, draggedPlayer]);
-            } else {
-                console.warn(`Cannot place a ${draggedPlayer.position} in a ${targetPositionType} slot.`);
-            }
-        }
+      // Provide specific feedback
+      let feedback = `Cannot switch to ${newFormationKey} with your current squad. `;
+      if (testPitchComposition.Goalkeeper !== rulesForNewFormation.Goalkeeper) feedback += `You need ${rulesForNewFormation.Goalkeeper} GKP. `;
+      if (testPitchComposition.Defender !== rulesForNewFormation.Defender) feedback += `You need ${rulesForNewFormation.Defender} DEF. `;
+      if (testPitchComposition.Midfielder !== rulesForNewFormation.Midfielder) feedback += `You need ${rulesForNewFormation.Midfielder} MID. `;
+      if (testPitchComposition.Forward !== rulesForNewFormation.Forward) feedback += `You need ${rulesForNewFormation.Forward} FWD. `;
+      feedback += "Please adjust your players on the pitch to match the formation requirements.";
+      alert(feedback);
     }
-
-  }, [selectedPlayers, isInitialPick, onPlayerDrop, onUpdateSelectedPlayers, maxSquadSize]);
+  }, [selectedPlayers, distributePlayersByFormation, getPitchComposition]);
 
 
   return (
     <>
+      {/* Formation Selector UI */}
+      {!isInitialPick && (
+        <FormationSelector>
+            {Object.keys(FORMATION_RULES).map(key => (
+                <FormationButton
+                    key={key}
+                    onClick={() => handleFormationSelection(key)}
+                    active={currentFormationKey === key}
+                >
+                    {key}
+                </FormationButton>
+            ))}
+        </FormationSelector>
+      )}
+
       <PitchContainer>
         {/* CSS-drawn pitch elements */}
         <HalfwayLine />
@@ -463,11 +616,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
               canRemove={isInitialPick}
-              // NEW: Pass substitution related props
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
               onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode} // Pass the toggle function
+              onToggleSubstitutionMode={onToggleSubstitutionMode}
             />
           ))}
         </PositionRow>
@@ -490,11 +642,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
               canRemove={isInitialPick}
-              // NEW: Pass substitution related props
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
               onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode} // Pass the toggle function
+              onToggleSubstitutionMode={onToggleSubstitutionMode}
             />
           ))}
         </PositionRow>
@@ -517,11 +668,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
               canRemove={isInitialPick}
-              // NEW: Pass substitution related props
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
               onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode} // Pass the toggle function
+              onToggleSubstitutionMode={onToggleSubstitutionMode}
             />
           ))}
         </PositionRow>
@@ -544,11 +694,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
               canRemove={isInitialPick}
-              // NEW: Pass substitution related props
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
               onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode} // Pass the toggle function
+              onToggleSubstitutionMode={onToggleSubstitutionMode}
             />
           ))}
         </PositionRow>
@@ -563,20 +712,19 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
       {/* Bench Area - Conditionally render based on isInitialPick */}
       {!isInitialPick && (
         <BenchContainer>
-          <h4>Substitutes</h4> {/* Changed title to "Substitutes" */}
+          <h4>Substitutes</h4>
           <div className="bench-players">
             {benchPlayers.map((player, index) => (
               <BenchPlayerWrapper key={player ? player.id : `bench-player-empty-${index}`}>
-                {/* Determine position abbreviation for the label */}
                 <BenchPositionLabel>
                   {player ? (
                     player.position === 'Goalkeeper' ? 'GKP' :
                     player.position === 'Defender' ? 'DEF' :
                     player.position === 'Midfielder' ? 'MID' :
                     player.position === 'Forward' ? 'FWD' :
-                    'SUB' // Fallback for bench players
+                    'SUB'
                   ) : (
-                    ['GKP', 'DEF', 'MID', 'FWD'][index] || 'SUB' // For empty slots, show a generic position or based on index
+                    ['GKP', 'DEF', 'MID', 'FWD'][index] || 'SUB'
                   )}
                 </BenchPositionLabel>
                 <PlayerJersey
@@ -594,19 +742,16 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                   onSetViceCaptain={onSetViceCaptain}
                   isInitialPick={isInitialPick}
                   canRemove={isInitialPick}
-                  // NEW: Pass substitution related props
                   substitutionMode={substitutionMode}
                   playerToSubstitute={playerToSubstitute}
                   onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-                  onToggleSubstitutionMode={onToggleSubstitutionMode} // Pass the toggle function
+                  onToggleSubstitutionMode={onToggleSubstitutionMode}
                 />
               </BenchPlayerWrapper>
             ))}
           </div>
         </BenchContainer>
       )}
-
-      {/* REMOVED: Auto Pick and Reset Buttons from here. They are now handled by parent components (PickTeam, Transfers). */}
     </>
   );
 }
