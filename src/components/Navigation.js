@@ -2,56 +2,97 @@
 import React from 'react';
 import styled from 'styled-components';
 
-const NavContainer = styled.nav`
-    background-color: var(--secondary-red); /* Use defined red */
+const NavigationContainer = styled.nav`
+    background-color: #2c3e50; /* MODIFIED: Dark purple background, matching bench container */
     padding: 10px 0;
-    ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        justify-content: space-around;
-    }
-    li {
-        margin: 0 10px;
-    }
-    button {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.1em;
-        padding: 8px 15px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    position: relative; /* Needed for active indicator positioning */
+    z-index: 1; /* Ensure it's above other elements if needed */
+`;
 
-        &:hover {
-            background-color: rgba(255,255,255,0.2);
+const NavItem = styled.button`
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1em;
+    font-weight: bold;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+
+    &:hover {
+        color: #f0f2f5; /* Light grey on hover */
+        transform: translateY(-2px);
+    }
+
+    ${props => props.active && `
+        color: #FFD700; /* Gold color for active link */
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background-color: #FFD700; /* Gold underline */
+            border-radius: 2px;
         }
-        &.active {
-            background-color: rgba(255,255,255,0.3);
-            font-weight: bold;
-        }
+    `}
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 `;
 
 function Navigation({ setActivePage, activePage, isInitialTeamSaved }) {
     return (
-        <NavContainer>
-            <ul>
-                <li><button className={activePage === 'dashboard' ? 'active' : ''} onClick={() => setActivePage('dashboard')}>Dashboard</button></li>
-                {!isInitialTeamSaved ? (
-                    <li><button className={activePage === 'pickTeamInitial' ? 'active' : ''} onClick={() => setActivePage('pickTeamInitial')}>Pick Team</button></li>
-                ) : (
-                    <>
-                        <li><button className={activePage === 'myTeam' ? 'active' : ''} onClick={() => setActivePage('myTeam')}>My Team</button></li>
-                        <li><button className={activePage === 'transfers' ? 'active' : ''} onClick={() => setActivePage('transfers')}>Transfers</button></li>
-                    </>
-                )}
-                <li><button className={activePage === 'fixtures' ? 'active' : ''} onClick={() => setActivePage('fixtures')}>Fixtures</button></li>
-                <li><button className={activePage === 'standings' ? 'active' : ''} onClick={() => setActivePage('standings')}>Standings</button></li>
-            </ul>
-        </NavContainer>
+        <NavigationContainer>
+            <NavItem
+                onClick={() => setActivePage('dashboard')}
+                active={activePage === 'dashboard'}
+            >
+                Dashboard
+            </NavItem>
+            <NavItem
+                onClick={() => setActivePage('myTeam')}
+                active={activePage === 'myTeam'}
+                disabled={!isInitialTeamSaved} /* Disable if initial team not saved */
+            >
+                My Team
+            </NavItem>
+            <NavItem
+                onClick={() => setActivePage('transfers')}
+                active={activePage === 'transfers'}
+                disabled={!isInitialTeamSaved} /* Disable if initial team not saved */
+            >
+                Transfers
+            </NavItem>
+            <NavItem
+                onClick={() => setActivePage('fixtures')}
+                active={activePage === 'fixtures'}
+            >
+                Fixtures
+            </NavItem>
+            <NavItem
+                onClick={() => setActivePage('standings')}
+                active={activePage === 'standings'}
+            >
+                Standings
+            </NavItem>
+            {/* <NavItem
+                onClick={() => setActivePage('playerDetails')}
+                active={activePage === 'playerDetails'}
+            >
+                Player Details
+            </NavItem> */}
+        </NavigationContainer>
     );
 }
 

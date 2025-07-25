@@ -1,48 +1,175 @@
 // src/components/PlayerSearchFilter.js
 import React from 'react';
 import styled from 'styled-components';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSearch, faChevronDown, faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
 
 const FilterContainer = styled.div`
-    display: flex;
-    gap: 10px;
+    background-color: #1a002b;
+    padding: 10px;
+    border-radius: 8px;
     margin-bottom: 20px;
-    flex-wrap: wrap;
+    color: white;
+`;
 
-    input, select {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+const SearchBar = styled.div`
+    position: relative;
+    margin-bottom: 15px;
+
+    input {
+        width: 100%;
+        padding: 10px 10px 10px 20px;
+        border: 1px solid #4a005c;
+        border-radius: 5px;
+        background-color: #33004a;
+        color: white;
+        font-size: 1em;
+
+        &::placeholder {
+            color: #ccc;
+        }
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #ccc;
     }
 `;
 
-function PlayerSearchFilter({ filters, setFilters, allTeams }) {
+const FilterButtons = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+
+    button, select {
+        background-color: #33004a;
+        color: white;
+        border: 1px solid #4a005c;
+        padding: 8px 12px;
+        border-radius: 5px;
+        font-size: 0.9em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+            background-color: #4a005c;
+        }
+
+        option {
+            background-color: #33004a;
+            color: white;
+        }
+    }
+`;
+
+
+const PlayersShownBar = styled.div`
+    /* MODIFIED: Changed background to solid color matching image_c43aad.png */
+    background-color: #6a11cb; /* Solid purple/blue color */
+    color: white; /* Text color */
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 15px;
+    /* Removed properties that might give it a 'scrollbar' look if not needed */
+`;
+
+const SortButton = styled.button`
+    background-color: #33004a;
+    color: white;
+    border: 1px solid #4a005c;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: #4a005c;
+    }
+`;
+
+
+function PlayerSearchFilter({ filters, setFilters, allTeams, setSortOrder, sortOrder, numPlayersShown }) {
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSortChange = (key) => {
+        setSortOrder(prev => ({
+            key: key,
+            direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+        }));
+    };
+
+    const getSortIcon = (key) => {
+        if (sortOrder.key === key) {
+            return sortOrder.direction === 'asc' ? faArrowUp : faArrowDown;
+        }
+        return null;
+    };
+
     return (
         <FilterContainer>
-            <input
-                type="text"
-                placeholder="Search player name..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            />
-            <select
-                value={filters.position}
-                onChange={(e) => setFilters({ ...filters, position: e.target.value })}
-            >
-                <option value="All">All Positions</option>
-                <option value="Goalkeeper">Goalkeeper</option>
-                <option value="Defender">Defender</option>
-                <option value="Midfielder">Midfielder</option>
-                <option value="Forward">Forward</option>
-            </select>
-            <select
-                value={filters.team}
-                onChange={(e) => setFilters({ ...filters, team: e.target.value })}
-            >
-                <option value="All">All Teams</option>
-                {allTeams.map(team => (
-                    <option key={team.id} value={team.id}>{team.name}</option>
-                ))}
-            </select>
+            <SearchBar>
+                <FontAwesomeIcon icon={faSearch} className="search-icon" />
+                <input
+                    type="text"
+                    name="search"
+                    placeholder="Search by name"
+                    value={filters.search}
+                    onChange={handleFilterChange}
+                />
+            </SearchBar>
+
+            <FilterButtons>
+                <select name="position" value={filters.position} onChange={handleFilterChange}>
+                    <option value="All">All Players</option>
+                    <option value="Goalkeeper">Goalkeepers</option>
+                    <option value="Defender">Defenders</option>
+                    <option value="Midfielder">Midfielders</option>
+                    <option value="Forward">Forwards</option>
+                </select>
+
+                <select name="cost" value={filters.cost} onChange={handleFilterChange}>
+                    <option value="All">All Cost</option>
+                    <option value="0-5">£0-5m</option>
+                    <option value="5.1-10">£5.1-10m</option>
+                    <option value="10.1-15">£10.1-15m</option>
+                </select>
+
+                <select name="team" value={filters.team} onChange={handleFilterChange}>
+                    <option value="All">All Teams</option>
+                    {allTeams.map(team => (
+                        <option key={team.id} value={team.id}>{team.name}</option>
+                    ))}
+                </select>
+
+                <SortButton onClick={() => handleSortChange('totalPoints')}>
+                    Total points <FontAwesomeIcon icon={getSortIcon('totalPoints') || faChevronDown} />
+                </SortButton>
+                <SortButton onClick={() => handleSortChange('cost')}>
+                    Price <FontAwesomeIcon icon={getSortIcon('cost') || faChevronDown} />
+                </SortButton>
+            </FilterButtons>
+
+            <PlayersShownBar>
+                {numPlayersShown} players shown
+            </PlayersShownBar>
         </FilterContainer>
     );
 }

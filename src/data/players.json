@@ -61,7 +61,7 @@
   },
   {
     "id": 33,
-    "name": "Bouzaabia Mohamed",
+    "name": "Bouzaabia Med",
     "team": "ESS",
     "position": "Defender",
     "cost": 5.0,
@@ -440,7 +440,7 @@
     },
     {
       "id": 65,
-      "name": "Laajimi Mohamed Amine",
+      "name": "Laajimi Amine",
       "team": "CA",
       "position": "Midfielder",
       "cost": 6.0,
@@ -452,7 +452,7 @@
     },
     {
       "id": 66,
-      "name": "Mahmoud Mohamed Sadok",
+      "name": "Mahmoud Med Sadok",
       "team": "CA",
       "position": "Midfielder",
       "cost": 6.0,
@@ -578,7 +578,7 @@
     },
     {
       "id": 77,
-      "name": "Saad Mohamed Fahd",
+      "name": "Saad Med Fahd",
       "team": "CA",
       "position": "Forward",
       "cost": 7.0,
@@ -888,7 +888,7 @@
     },
     {
       "id": 103,
-      "name": "Jammali Mohamed Sadok",
+      "name": "Jammali Med Sadok",
       "team": "CAB",
       "position": "Midfielder",
       "cost": 6.0,
@@ -1080,7 +1080,7 @@
     },
     {
       "id": 119,
-      "name": "Gaaloul Mohamed Hedi",
+      "name": "Gaaloul Med Hedi",
       "team": "CSS",
       "position": "Goalkeeper",
       "cost": 4.5,
@@ -1416,7 +1416,7 @@
     },
     {
       "id": 147,
-      "name": "Guesmi Mohamed Islem",
+      "name": "Guesmi Med Islem",
       "team": "CSS",
       "position": "Forward",
       "cost": 7.0,
@@ -1449,7 +1449,7 @@
     },
     {
       "id": 150,
-      "name": "Kachouri Mohamed Mehdi",
+      "name": "Kachouri Med Mehdi",
       "team": "CSS",
       "position": "Forward",
       "cost": 7.0,
@@ -1541,7 +1541,7 @@
     },
     {
       "id": 158,
-      "name": "Ben Ali Mohamed",
+      "name": "Ben Ali Med",
       "team": "EST",
       "position": "Defender",
       "cost": 5.0,
@@ -1553,7 +1553,7 @@
     },
     {
       "id": 159,
-      "name": "Ben Hamida Mohamed",
+      "name": "Ben Hamida Med",
       "team": "EST",
       "position": "Defender",
       "cost": 5.0,
@@ -1875,7 +1875,7 @@
     },
     {
       "id": 186,
-      "name": "Hamrouni Mohamed Rayen",
+      "name": "Hamrouni Med Rayen",
       "team": "EST",
       "position": "Forward",
       "cost": 7.0,
@@ -3066,7 +3066,7 @@
     },
     {
       "id": 288,
-      "name": "Hazgui Mohamed Amine",
+      "name": "Hazgui Med Amine",
       "team": "ESZ",
       "position": "Goalkeeper",
       "cost": 4.5,
@@ -3246,7 +3246,7 @@
     },
     {
       "id": 303,
-      "name": "Ghoul Mohamed Fitouri",
+      "name": "Ghoul Med Fitouri",
       "team": "ESZ",
       "position": "Midfielder",
       "cost": 6.0,
@@ -3807,7 +3807,7 @@
     },
     {
       "id": 350,
-      "name": "Boucetta Mohamed Aziz",
+      "name": "Boucetta Med Aziz",
       "team": "ASZ",
       "position": "Defender",
       "cost": 5.0,
@@ -3891,7 +3891,7 @@
     },
     {
       "id": 357,
-      "name": "Rabah Mohamed Rayane",
+      "name": "Rabah Med Rayane",
       "team": "ASZ",
       "position": "Defender",
       "cost": 5.0,
@@ -4236,7 +4236,7 @@
     },
     {
       "id": 386,
-      "name": "Yeken Mohamed Habib",
+      "name": "Yeken Med Habib",
       "team": "USBG",
       "position": "Defender",
       "cost": 5.0,
@@ -4332,7 +4332,7 @@
     },
     {
       "id": 394,
-      "name": "Hamed Mohamed Nasr",
+      "name": "Hamed Med Nasr",
       "team": "USBG",
       "position": "Midfielder",
       "cost": 6.0,
@@ -4728,7 +4728,7 @@
     },
     {
       "id": 427,
-      "name": "Khelifa Mohamed Hachem",
+      "name": "Khelifa Med Hachem",
       "team": "EM",
       "position": "Defender",
       "cost": 5.0,
@@ -4764,7 +4764,7 @@
     },
     {
       "id": 430,
-      "name": "Ammar Mohamed Amine",
+      "name": "Ammar Med Amine",
       "team": "EM",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5028,7 +5028,7 @@
     },
     {
       "id": 452,
-      "name": "Mohamed Aziz Chaouch",
+      "name": "Med Aziz Chaouch",
       "team": "ASM",
       "position": "Defender",
       "cost": 5.0,
@@ -5076,7 +5076,7 @@
     },
     {
       "id": 456,
-      "name": "Mohamed Othman Karoui",
+      "name": "Med Othman Karoui",
       "team": "ASM",
       "position": "Defender",
       "cost": 5.0,
@@ -5136,7 +5136,7 @@
     },
     {
       "id": 461,
-      "name": "Mohamed Aziz Hamdi",
+      "name": "Med Aziz Hamdi",
       "team": "ASM",
       "position": "Defender",
       "cost": 5.0,
@@ -5220,7 +5220,7 @@
     },
     {
       "id": 468,
-      "name": "Mohamed Naceur Trabelsi",
+      "name": "Med Naceur Trabelsi",
       "team": "ASM",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5232,7 +5232,7 @@
     },
     {
       "id": 469,
-      "name": "Mohamed Amine Khaloui",
+      "name": "Med Amine Khaloui",
       "team": "ASM",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5244,7 +5244,7 @@
     },
     {
       "id": 470,
-      "name": "Mohamed Aziz Traidi",
+      "name": "Med Aziz Traidi",
       "team": "ASM",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5256,7 +5256,7 @@
     },
     {
       "id": 471,
-      "name": "Mohamed Amine Tritar",
+      "name": "Med Amine Tritar",
       "team": "ASM",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5436,7 +5436,7 @@
     },
     {
       "id": 486,
-      "name": "Mohamed Aziz Bejaoui",
+      "name": "Med Aziz Bejaoui",
       "team": "JSK",
       "position": "Goalkeeper",
       "cost": 4.5,
@@ -5460,7 +5460,7 @@
     },
     {
       "id": 488,
-      "name": "Mohamed Amine Kalai",
+      "name": "Med Amine Kalai",
       "team": "JSK",
       "position": "Defender",
       "cost": 5.0,
@@ -5508,7 +5508,7 @@
     },
     {
       "id": 492,
-      "name": "Mohamed Amine Lakhal",
+      "name": "Med Amine Lakhal",
       "team": "JSK",
       "position": "Defender",
       "cost": 0.075,
@@ -5520,7 +5520,7 @@
     },
     {
       "id": 493,
-      "name": "Mohamed Ali Yaakoubi",
+      "name": "Med Ali Yaakoubi",
       "team": "JSK",
       "position": "Defender",
       "cost": 5.0,
@@ -5544,7 +5544,7 @@
     },
     {
       "id": 495,
-      "name": "Mohamed Amine Dhouibi",
+      "name": "Med Amine Dhouibi",
       "team": "JSK",
       "position": "Defender",
       "cost": 5.0,
@@ -5616,7 +5616,7 @@
     },
     {
       "id": 501,
-      "name": "Mohamed Amine Jerbi",
+      "name": "Med Amine Jerbi",
       "team": "JSK",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5700,7 +5700,7 @@
     },
     {
       "id": 508,
-      "name": "Mohamed Amine Zairi",
+      "name": "Med Amine Zairi",
       "team": "JSK",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5712,7 +5712,7 @@
     },
     {
       "id": 509,
-      "name": "Mohamed Bennour",
+      "name": "Med Bennour",
       "team": "JSK",
       "position": "Midfielder",
       "cost": 6.0,
@@ -5760,7 +5760,7 @@
     },
     {
       "id": 513,
-      "name": "Mohamed Aziz Neffati",
+      "name": "Med Aziz Neffati",
       "team": "JSK",
       "position": "Forward",
       "cost": 7.0,
@@ -5772,7 +5772,7 @@
     },
     {
       "id": 514,
-      "name": "Mohamed Yassine Denden",
+      "name": "Med Yassine Denden",
       "team": "JSK",
       "position": "Forward",
       "cost": 7.0,

@@ -167,7 +167,6 @@ const BenchContainer = styled.div`
   border-radius: 10px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   padding: 15px 20px; /* Adjusted padding to match image more closely */
-  margin-top: 20px;
   width: 96%;
   max-width: 900px;
   text-align: center;
@@ -175,6 +174,7 @@ const BenchContainer = styled.div`
 
   h4 {
     color: white;
+    margin-top: 5px; 
     margin-bottom: 15px;
     font-size: 1.5em;
     font-weight: bold;

@@ -3,12 +3,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
 
 import PlayerSearchFilter from '../components/PlayerSearchFilter';
 import PlayerCard from '../components/PlayerCard';
 import SelectedTeamDisplay from '../components/SelectedTeamDisplay';
 
-// Import the styled components from SelectedTeamDisplay
 import { ButtonContainer, ActionButton } from '../components/SelectedTeamDisplay';
 
 const TransfersContainer = styled.div`
@@ -16,7 +17,7 @@ const TransfersContainer = styled.div`
     gap: 20px;
     padding: 20px;
     max-width: 1200px;
-    margin: 20px auto;
+    margin: 20px 0;
     flex-wrap: wrap;
 
     @media (max-width: 768px) {
@@ -28,11 +29,25 @@ const TransfersContainer = styled.div`
 
 const PlayerSelectionArea = styled.div`
     flex: 1;
-    background-color: #ffffff;
+    background-color: #1a002b;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     min-width: 300px;
+    color: white;
+
+    h2 {
+        color: white;
+        font-size: 1.8em;
+        margin-bottom: 5px;
+    }
+
+    p {
+        color: #cccccc;
+        font-size: 0.9em;
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
 
     @media (max-width: 768px) {
         flex: auto;
@@ -44,14 +59,68 @@ const PlayerSelectionArea = styled.div`
 const PlayerList = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
     margin-top: 20px;
     max-height: 700px;
     overflow-y: auto;
-    padding-right: 10px;
+    overflow-x: hidden;
+    padding-right: 5px;
+    direction: ltr;
+
+    /* Custom scrollbar styling (vertical) */
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: #33004a;
+        border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #884dff;
+        border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #6a11cb;
+    }
 
     @media (max-width: 768px) {
         max-height: 500px;
+    }
+`;
+
+const PlayerListItemWrapper = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    direction: ltr;
+    width: 100%;
+`;
+
+const AddButtonCircle = styled.button`
+    background-color: ${props => props.isAdded ? '#4a005c' : '#6a11cb'};
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: ${props => props.isAdded ? 'not-allowed' : 'pointer'};
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+
+    &:hover {
+        background-color: ${props => props.isAdded ? '#4a005c' : '#5a009a'};
+    }
+    &:disabled {
+        background-color: #4a005c;
     }
 `;
 
@@ -95,10 +164,48 @@ const TeamInfoBar = styled.div`
     }
 `;
 
+const PositionHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1a002b;
+    padding: 10px 15px;
+    margin-top: 15px;
+    border-radius: 5px;
+    border-bottom: 1px solid #4a005c;
+    direction: ltr;
+    margin-right: 0;
+
+    h3 {
+        color: white;
+        font-size: 1em;
+        margin: 0;
+        text-transform: uppercase;
+    }
+`;
+
+const HeaderStats = styled.div`
+    display: flex;
+    gap: 30px;
+    justify-content: flex-end;
+    align-items: center;
+    margin-right: 30px;
+
+    span {
+        color: #cccccc;
+        font-size: 0.8em;
+        font-weight: normal;
+        min-width: 40px; /* MODIFIED: Reduced min-width for Price and Total p... headers */
+        text-align: right;
+    }
+`;
+
+
 function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData }) {
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [filteredPlayers, setFilteredPlayers] = useState([]);
-    const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All' });
+    const [filters, setFilters] = useState({ search: '', position: 'All', team: 'All', cost: 'All', points: 'All' });
+    const [sortOrder, setSortOrder] = useState({ key: 'totalPoints', direction: 'desc' });
 
     const initialBudget = 100.0;
     const maxPlayers = 15;
@@ -114,7 +221,7 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
     }, [userData, allPlayers]);
 
     useEffect(() => {
-        let currentPlayers = allPlayers;
+        let currentPlayers = [...allPlayers];
 
         if (filters.search) {
             currentPlayers = currentPlayers.filter(p =>
@@ -127,8 +234,28 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         if (filters.team !== 'All') {
             currentPlayers = currentPlayers.filter(p => p.team === filters.team);
         }
+        if (filters.cost !== 'All') {
+            const [min, max] = filters.cost.split('-').map(Number);
+            currentPlayers = currentPlayers.filter(p => p.cost >= min && p.cost <= max);
+        }
+        if (filters.points === 'Top 100') {
+            currentPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
+            currentPlayers = currentPlayers.slice(0, 100);
+        }
+
+        currentPlayers.sort((a, b) => {
+            const aValue = a[sortOrder.key];
+            const bValue = b[sortOrder.key];
+
+            if (sortOrder.direction === 'asc') {
+                return aValue - bValue;
+            } else {
+                return bValue - aValue;
+            }
+        });
+
         setFilteredPlayers(currentPlayers);
-    }, [allPlayers, filters]);
+    }, [allPlayers, filters, sortOrder]);
 
     const handleAddPlayer = useCallback((player) => {
         if (selectedPlayers.some(p => p.id === player.id)) {
@@ -196,17 +323,8 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         }));
     }, [setUserData, initialBudget]);
 
-    // Dummy functions for Auto Pick and Reset since SelectedTeamDisplay no longer handles them
-    const handleAutoPick = useCallback(() => {
-        alert("Auto Pick functionality for Transfers page would go here.");
-        // You would typically implement logic similar to SelectedTeamDisplay's handleAutoPick here,
-        // but tailored for the transfer context (e.g., suggesting players to buy/sell).
-    }, []);
-
     const handleConfirmTransfers = useCallback(() => {
         alert("Confirm Transfers clicked! (Implement actual transfer saving logic here)");
-        // This is where you'd typically save the final selectedPlayers to your backend/Firestore
-        // and update the user's budget, potentially adjusting for transfer fees.
     }, []);
 
 
@@ -214,23 +332,60 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
         return <TransfersContainer>Loading transfer data...</TransfersContainer>;
     }
 
+    const playersByPosition = {
+        Goalkeeper: filteredPlayers.filter(p => p.position === 'Goalkeeper'),
+        Defender: filteredPlayers.filter(p => p.position === 'Defender'),
+        Midfielder: filteredPlayers.filter(p => p.position === 'Midfielder'),
+        Forward: filteredPlayers.filter(p => p.position === 'Forward'),
+    };
+
+
     return (
         <DndProvider backend={HTML5Backend}>
             <TransfersContainer>
                 <PlayerSelectionArea>
-                    <h2>Transfer Players</h2>
-                    <p>Budget: ${userData.budget.toFixed(1)}M | Players: {selectedPlayers.length}/{maxPlayers}</p>
-                    <PlayerSearchFilter filters={filters} setFilters={setFilters} allTeams={allTeams} />
+                    <h2>Player Selection</h2>
+                    <p>Select a maximum of 3 players from a single team or 'Auto Pick' if you're short of time.</p>
+                    <PlayerSearchFilter
+                        filters={filters}
+                        setFilters={setFilters}
+                        allTeams={allTeams}
+                        setSortOrder={setSortOrder}
+                        sortOrder={sortOrder}
+                        numPlayersShown={filteredPlayers.length}
+                    />
                     <PlayerList>
-                        {filteredPlayers.map(player => (
-                            <PlayerCard
-                                key={player.id}
-                                player={player}
-                                onAdd={() => handleAddPlayer(player)}
-                                isAdded={selectedPlayers.some(p => p.id === player.id)}
-                                isListView={true}
-                                allTeams={allTeams}
-                            />
+                        {Object.keys(playersByPosition).map(positionType => (
+                            <div key={positionType}>
+                                {playersByPosition[positionType].length > 0 && (
+                                    <>
+                                        <PositionHeader>
+                                            <h3>{positionType}s</h3>
+                                            <HeaderStats>
+                                                <span>Price</span>
+                                                <span>Points</span>
+                                            </HeaderStats>
+                                        </PositionHeader>
+                                        {playersByPosition[positionType].map(player => (
+                                            <PlayerListItemWrapper key={player.id}>
+                                                <PlayerCard
+                                                    player={player}
+                                                    isAdded={selectedPlayers.some(p => p.id === player.id)}
+                                                    isListView={true}
+                                                    allTeams={allTeams}
+                                                />
+                                                <AddButtonCircle
+                                                    onClick={() => handleAddPlayer(player)}
+                                                    isAdded={selectedPlayers.some(p => p.id === player.id)}
+                                                    disabled={selectedPlayers.some(p => p.id === player.id)}
+                                                >
+                                                    <FontAwesomeIcon icon={faPlus} />
+                                                </AddButtonCircle>
+                                            </PlayerListItemWrapper>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
                         ))}
                     </PlayerList>
                 </PlayerSelectionArea>
@@ -247,15 +402,12 @@ function Transfers({ userData, allPlayers, allTeams, allFixtures, setUserData })
                         allFixtures={allFixtures}
                         onPlayerDrop={handlePlayerDrop}
                         budget={userData.budget}
-                        isInitialPick={true} // Transfers always show 15 players on pitch
+                        isInitialPick={true}
                         onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
-                        onResetTeam={handleResetTeam} // Keep this for now, though buttons are moved
-                        canRemove={true} // Always show remove button on Transfers page
+                        onResetTeam={handleResetTeam}
+                        canRemove={true}
                     />
-                    {/* MODIFIED: All three buttons in one ButtonContainer */}
                     <ButtonContainer>
-                        <ActionButton onClick={handleAutoPick}>Auto Pick</ActionButton>
-                        <ActionButton onClick={handleResetTeam}>Reset</ActionButton> {/* Use handleResetTeam from this component */}
                         <ActionButton onClick={handleConfirmTransfers}>Confirm Transfers</ActionButton>
                     </ButtonContainer>
                 </TeamDisplayArea>
