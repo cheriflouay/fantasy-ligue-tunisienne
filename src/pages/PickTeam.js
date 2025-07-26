@@ -525,7 +525,7 @@ function PickTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, on
                                 opacity: selectedPlayers.length === maxPlayers ? 1 : 0.5,
                             }}
                         >
-                            Save Initial Team
+                            Save Your Team
                         </ActionButton>
                     </ButtonContainer>
                 </TeamDisplayArea>

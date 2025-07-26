@@ -4,7 +4,6 @@ import styled from 'styled-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
-// Removed unused imports: PlayerSearchFilter, PlayerCard
 import SelectedTeamDisplay from '../components/SelectedTeamDisplay';
 
 import { ButtonContainer, ActionButton } from '../components/SelectedTeamDisplay';
@@ -68,41 +67,90 @@ const TeamInfoBar = styled.div`
 
 
 function MyTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, currentUser }) {
-    // selectedPlayers will now hold objects { id: playerId, onPitch: boolean }
+    // selectedPlayers will now hold full player objects (with onPitch property)
     const [selectedPlayers, setSelectedPlayers] = useState([]);
     const [captainId, setCaptainId] = useState(userData?.captainId || null);
     const [viceCaptainId, setViceCaptainId] = useState(userData?.viceCaptainId || null);
-    // substitutionMode is now implicitly handled by playerToSubstitute state
+    const [substitutionMode, setSubstitutionMode] = useState(false);
     const [playerToSubstitute, setPlayerToSubstitute] = useState(null);
 
-    const initialBudget = 100.0; // This might be overridden by userData.budget
-    const maxPlayers = 15; // Total squad size
+
+    const initialBudget = 100.0;
+    const maxPlayers = 15;
 
     const currentBudgetRemaining = (userData?.budget !== undefined ? userData.budget : initialBudget).toFixed(1);
 
 
     useEffect(() => {
         if (userData && allPlayers.length > 0) {
-            // Map stored player IDs to full player objects, preserving onPitch status
-            const initialSelection = userData.players.map((playerData, index) => {
+            let loadedPlayers = userData.players.map(playerData => { // userData.players now stores {id, onPitch}
                 const player = allPlayers.find(p => p.id === playerData.id);
-                if (player) {
-                    // Ensure onPitch is always a boolean. Default to true for first 11 if undefined.
-                    const onPitchStatus = typeof playerData.onPitch === 'boolean' ? playerData.onPitch : (index < 11);
-                    return { ...player, onPitch: onPitchStatus };
-                }
-                return null;
+                // Ensure player object has necessary properties, and use stored onPitch or default
+                return player ? { ...player, onPitch: typeof playerData.onPitch === 'boolean' ? playerData.onPitch : false } : null;
             }).filter(Boolean); // Filter out any nulls if player not found
-            setSelectedPlayers(initialSelection);
+
+            // --- Robust onPitch assignment for 11 on pitch, 4 on bench ---
+            // This logic ensures a consistent 11/4 split, overriding potentially inconsistent saved data
+            let pitchCandidates = [];
+            let benchCandidates = [];
+
+            // Prioritize players already marked 'onPitch: true' for the pitch
+            loadedPlayers.forEach(p => {
+                if (p.onPitch && pitchCandidates.length < 11) {
+                    pitchCandidates.push({ ...p, onPitch: true });
+                } else {
+                    benchCandidates.push({ ...p, onPitch: false });
+                }
+            });
+
+            // If not enough pitch players, pull from bench candidates
+            while (pitchCandidates.length < 11 && benchCandidates.length > 0) {
+                const playerToMoveToPitch = benchCandidates.shift(); // Take from the start of bench candidates
+                pitchCandidates.push({ ...playerToMoveToPitch, onPitch: true });
+            }
+
+            // If too many pitch players, move extras to bench
+            while (pitchCandidates.length > 11 && pitchCandidates.length > 0) {
+                const playerToMoveToBench = pitchCandidates.pop(); // Take from the end of pitch candidates
+                benchCandidates.unshift({ ...playerToMoveToBench, onPitch: false }); // Add to start of bench candidates
+            }
+
+            // Ensure bench has exactly 4 players (if possible)
+            if (benchCandidates.length > 4) {
+                benchCandidates = benchCandidates.slice(0, 4);
+            } else {
+                while (benchCandidates.length < 4 && pitchCandidates.length > 11) {
+                    const playerToMoveToBench = pitchCandidates.pop();
+                    benchCandidates.push({ ...playerToMoveToBench, onPitch: false });
+                }
+            }
+
+            // Final check to ensure exactly 11 on pitch and 4 on bench
+            // This might still leave some edge cases if total players are < 15 or > 15
+            // But assuming 15 players are always loaded:
+            const finalPitch = pitchCandidates.slice(0, 11).map(p => ({ ...p, onPitch: true }));
+            const finalBench = benchCandidates.slice(0, 4).map(p => ({ ...p, onPitch: false }));
+
+            setSelectedPlayers([...finalPitch, ...finalBench]);
+
+
+            // eslint-disable-next-line no-shadow
+            setSelectedPlayers(currentSelectedPlayers => {
+                console.log("--- Initial selectedPlayers state after load ---");
+                currentSelectedPlayers.forEach(p => console.log(`Player: ${p ? p.name : 'Empty'}, onPitch: ${p ? p.onPitch : 'N/A'}`));
+                console.log("------------------------------------------------");
+                return currentSelectedPlayers; // Return the state unchanged after logging
+            });
+
+
             setCaptainId(userData.captainId || null);
             setViceCaptainId(userData.viceCaptainId || null);
+
         }
     }, [userData, allPlayers]);
 
-    // This function is called by SelectedTeamDisplay to update selectedPlayers state
-    // (e.g., when a player is removed via the 'x' button)
     const updateSelectedPlayersFromDisplay = useCallback((newPlayers) => {
-        setSelectedPlayers(newPlayers.filter(Boolean)); // Filter out any nulls
+        setSelectedPlayers(newPlayers.filter(Boolean)); // Ensure nulls are filtered out
         // Also update captain/vice-captain if the removed player was one
         if (captainId && !newPlayers.some(p => p && p.id === captainId)) {
             setCaptainId(null);
@@ -112,131 +160,237 @@ function MyTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, curr
         }
     }, [captainId, viceCaptainId]);
 
-    // This function is for internal re-ordering/swapping within the selected squad
     const handlePlayerMoveInSquad = useCallback((draggedPlayer, targetPlayer, targetPositionType) => {
-        let newSelectedPlayers = [...selectedPlayers]; // Copy current state
+        let currentPlayers = [...selectedPlayers];
 
-        // If targetPlayer is null, it means dropping onto an empty slot.
-        // We need to determine if this empty slot is on pitch or bench.
+        const actualDraggedPlayer = currentPlayers.find(p => p.id === draggedPlayer.id);
+        if (!actualDraggedPlayer) return; // Should not happen if player exists in squad
+
+        // Determine if the target is a pitch slot based on targetPositionType (for empty slots)
+        const targetIsPitchSlotType = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].includes(targetPositionType);
+
+        // Case 1: Dragging to an empty slot (pitch or bench)
         if (targetPlayer === null) {
-            // Find the dragged player in the current selectedPlayers array
-            const draggedPlayerIndex = newSelectedPlayers.findIndex(p => p.id === draggedPlayer.id);
-            if (draggedPlayerIndex === -1) return; // Should not happen for existing players
-
-            // Determine if the target position type implies a pitch or bench slot
-            const isTargetPitch = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].includes(targetPositionType);
-
-            // Update the onPitch status of the dragged player
-            newSelectedPlayers[draggedPlayerIndex] = { ...newSelectedPlayers[draggedPlayerIndex], onPitch: isTargetPitch };
-
-            // For visual reordering on pitch/bench, we might need to sort or re-arrange
-            // This is largely handled by distributePlayersByFormation in SelectedTeamDisplay
-            // but a stable sort here can help maintain order after status change.
-            newSelectedPlayers.sort((a,b) => a.id - b.id); // Simple stable sort
-
-            updateSelectedPlayersFromDisplay(newSelectedPlayers); // Call the local function
+            const newPlayers = currentPlayers.map(p => {
+                if (p.id === draggedPlayer.id) {
+                    return { ...p, onPitch: targetIsPitchSlotType };
+                }
+                return p;
+            });
+            setSelectedPlayers(newPlayers);
             return;
         }
 
-        // If targetPlayer exists, it's a swap between two players
-        const draggedPlayerIndex = newSelectedPlayers.findIndex(p => p.id === draggedPlayer.id);
-        const targetPlayerIndex = newSelectedPlayers.findIndex(p => p.id === targetPlayer.id);
+        // Case 2: Dragging one player onto another (swap or reorder)
+        const draggedPlayerIndex = currentPlayers.findIndex(p => p && p.id === draggedPlayer.id);
+        const targetPlayerIndex = currentPlayers.findIndex(p => p && p.id === targetPlayer.id);
 
-        if (draggedPlayerIndex === -1 || targetPlayerIndex === -1) return; // Should not happen
+        if (draggedPlayerIndex === -1 || targetPlayerIndex === -1) return;
 
-        // Swap their onPitch statuses
-        const tempOnPitch = newSelectedPlayers[draggedPlayerIndex].onPitch;
-        newSelectedPlayers[draggedPlayerIndex].onPitch = newSelectedPlayers[targetPlayerIndex].onPitch;
-        newSelectedPlayers[targetPlayerIndex].onPitch = tempOnPitch;
+        const actualTargetPlayer = currentPlayers[targetPlayerIndex];
 
-        // After swapping onPitch status, update the state
-        updateSelectedPlayersFromDisplay(newSelectedPlayers); // Call the local function
+        // Determine if both are on pitch, both on bench, or one of each
+        const draggedIsOnPitch = actualDraggedPlayer.onPitch;
+        const actualTargetIsOnPitch = actualTargetPlayer.onPitch; 
 
-    }, [selectedPlayers, updateSelectedPlayersFromDisplay]);
+        if (draggedIsOnPitch && actualTargetIsOnPitch) {
+            // Both on pitch: Apply Rule 1 (same position swap)
+            if (actualDraggedPlayer.position !== actualTargetPlayer.position) {
+                alert(`Rule 1 violation: Cannot swap ${actualDraggedPlayer.name} (${actualDraggedPlayer.position}) with ${actualTargetPlayer.name} (${actualTargetPlayer.position}). Players on the pitch must be swapped with players of the same position.`);
+                return;
+            }
+            // If positions match, perform a simple swap of player objects (onPitch status remains true for both)
+            const updatedPlayers = currentPlayers.map(p => {
+                if (p.id === draggedPlayer.id) return { ...targetPlayer, onPitch: true };
+                if (p.id === targetPlayer.id) return { ...draggedPlayer, onPitch: true };
+                return p;
+            });
+            setSelectedPlayers(updatedPlayers);
+        } else if (!draggedIsOnPitch && !actualTargetIsOnPitch) {
+            // Both on bench: Reorder bench players (Rule 2 applies for GKP fix)
+            // This is a reorder within the bench.
+            const newBenchOrder = [...currentPlayers];
+            const [removed] = newBenchOrder.splice(draggedPlayerIndex, 1);
+            newBenchOrder.splice(targetPlayerIndex, 0, removed);
 
+            // Now, apply Rule 2: GKP always fixed at the start of the bench
+            const gkpOnBench = newBenchOrder.find(p => p && p.position === 'Goalkeeper' && !p.onPitch);
+            if (gkpOnBench && newBenchOrder.indexOf(gkpOnBench) !== 0) {
+                // If GKP exists on bench and is not at index 0, move it to index 0
+                const gkpIndex = newBenchOrder.indexOf(gkpOnBench);
+                const [gkp] = newBenchOrder.splice(gkpIndex, 1);
+                newBenchOrder.unshift(gkp);
+            }
+            setSelectedPlayers(newBenchOrder); // Update state with reordered bench
+        } else {
+            // One on pitch, one on bench: This is a direct pitch-bench swap.
+            // This is what the click-based substitution also does.
+            // The `onPitch` status needs to be toggled for both.
+            const updatedPlayers = currentPlayers.map(p => {
+                if (p.id === draggedPlayer.id) return { ...p, onPitch: !p.onPitch };
+                if (p.id === targetPlayer.id) return { ...p, onPitch: !p.onPitch };
+                return p;
+            });
+            setSelectedPlayers(updatedPlayers);
+        }
 
-    // Handle setting captain
+        // Update captain/vice-captain if their IDs changed positions (this logic is general and fine)
+        if (captainId === draggedPlayer.id) {
+            setCaptainId(targetPlayer.id);
+        } else if (captainId === targetPlayer.id) {
+            setCaptainId(draggedPlayer.id);
+        }
+
+        if (viceCaptainId === draggedPlayer.id) {
+            setViceCaptainId(targetPlayer.id);
+        } else if (viceCaptainId === targetPlayer.id) {
+            setViceCaptainId(draggedPlayer.id);
+        }
+
+    }, [selectedPlayers, captainId, viceCaptainId]);
+
     const handleSetCaptain = useCallback((player) => {
         if (!player) return;
 
-        // Only players on the pitch can be Captain
-        const isPlayerOnPitch = selectedPlayers.some(p => p.id === player.id && p.onPitch);
+        const isPlayerOnPitch = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id); // Check if in first 11
         if (!isPlayerOnPitch) {
             alert("Only players in the starting XI can be Captain.");
             return;
         }
 
         if (captainId === player.id) {
-            setCaptainId(null); // Deselect if already captain
+            setCaptainId(null);
         } else {
             if (viceCaptainId === player.id) {
-                setViceCaptainId(null); // If player was VC, remove VC status
+                setViceCaptainId(null);
             }
             setCaptainId(player.id);
         }
     }, [captainId, viceCaptainId, selectedPlayers]);
 
-    // Handle setting vice-captain
     const handleSetViceCaptain = useCallback((player) => {
         if (!player) return;
 
-        // Only players on the pitch can be Vice-Captain
-        const isPlayerOnPitch = selectedPlayers.some(p => p.id === player.id && p.onPitch);
+        const isPlayerOnPitch = selectedPlayers.slice(0, 11).some(p => p && p.id === player.id); // Check if in first 11
         if (!isPlayerOnPitch) {
             alert("Only players in the starting XI can be Vice-Captain.");
             return;
         }
 
         if (viceCaptainId === player.id) {
-            setViceCaptainId(null); // Deselect if already vice-captain
+            setViceCaptainId(null);
         } else {
             if (captainId === player.id) {
-                setCaptainId(null); // If player was C, remove C status
+                setCaptainId(null);
             }
             setViceCaptainId(player.id);
         }
     }, [captainId, viceCaptainId, selectedPlayers]);
 
-    // Handle saving lineup changes to Firestore
+    // New function to handle the "Substitution Mode" button toggle
+    const handleToggleSubstitutionMode = useCallback(() => {
+        setSubstitutionMode(prevMode => !prevMode);
+        setPlayerToSubstitute(null); // Always clear selected player when toggling mode
+    }, []);
+
+    // New function to handle clicks on players when in substitution mode
+    const handlePlayerClick = useCallback((clickedPlayer) => {
+        if (!substitutionMode) return; // Only process if in substitution mode
+
+        if (clickedPlayer === null) {
+            // Clicking an empty slot while in substitution mode does nothing.
+            return;
+        }
+
+        if (!playerToSubstitute) {
+            // First player selected for substitution (must be on pitch)
+            if (!clickedPlayer.onPitch) {
+                // If not on pitch, do nothing (no alert, just don't select it)
+                return;
+            }
+            setPlayerToSubstitute(clickedPlayer);
+        } else {
+            // Second player selected for substitution (playerToSubstitute is already set)
+            if (clickedPlayer.id === playerToSubstitute.id) {
+                // Clicking the same player again cancels selection
+                setPlayerToSubstitute(null);
+                return;
+            }
+
+            // Validate swap (pitch <-> bench only)
+            if (playerToSubstitute.onPitch === clickedPlayer.onPitch) {
+                // Both are on pitch or both are on bench, invalid swap for click mode
+                // Do nothing, visual feedback (no swap) is sufficient
+                return;
+            }
+
+            // Perform the swap
+            const updatedPlayers = selectedPlayers.map(p => {
+                if (p.id === playerToSubstitute.id) {
+                    return { ...p, onPitch: !p.onPitch };
+                }
+                if (p.id === clickedPlayer.id) {
+                    return { ...p, onPitch: !p.onPitch };
+                }
+                return p;
+            });
+
+            setSelectedPlayers(updatedPlayers);
+
+            // Update captain/vice-captain if involved in swap
+            if (captainId === playerToSubstitute.id) {
+                setCaptainId(clickedPlayer.id);
+            } else if (captainId === clickedPlayer.id) {
+                setCaptainId(playerToSubstitute.id);
+            }
+
+            if (viceCaptainId === playerToSubstitute.id) {
+                setViceCaptainId(clickedPlayer.id);
+            } else if (viceCaptainId === clickedPlayer.id) {
+                setViceCaptainId(playerToSubstitute.id);
+            }
+
+            // Reset substitution mode after successful swap
+            setSubstitutionMode(false);
+            setPlayerToSubstitute(null);
+        }
+    }, [substitutionMode, playerToSubstitute, selectedPlayers, captainId, viceCaptainId]);
+
     const handleSaveLineupChanges = useCallback(() => {
-        // Ensure there are 11 players on pitch and 4 on bench
-        const pitchPlayersCount = selectedPlayers.filter(p => p.onPitch).length;
-        const benchPlayersCount = selectedPlayers.filter(p => !p.onPitch).length;
+        const pitchPlayersCount = selectedPlayers.filter(p => p && p.onPitch).length;
+        const benchPlayersCount = selectedPlayers.filter(p => p && !p.onPitch).length;
 
         if (pitchPlayersCount !== 11 || benchPlayersCount !== 4) {
             alert("Your team must have exactly 11 players on the pitch and 4 on the bench to save.");
             return;
         }
 
-        // Check if captain and vice-captain are still valid (on pitch)
-        const currentCaptain = selectedPlayers.find(p => p.id === captainId);
-        const currentViceCaptain = selectedPlayers.find(p => p.id === viceCaptainId);
+        // Check if captain and vice-captain are still valid (on the pitch)
+        const isCaptainOnPitch = selectedPlayers.some(p => p && p.id === captainId && p.onPitch);
+        const isViceCaptainOnPitch = selectedPlayers.some(p => p && p.id === viceCaptainId && p.onPitch);
 
-        if (captainId && (!currentCaptain || !currentCaptain.onPitch)) {
+        if (captainId && !isCaptainOnPitch) {
             alert("Captain must be on the pitch. Please re-assign or move them to the pitch.");
             return;
         }
-        if (viceCaptainId && (!currentViceCaptain || !currentViceCaptain.onPitch)) {
+        if (viceCaptainId && !isViceCaptainOnPitch) {
             alert("Vice-Captain must be on the pitch. Please re-assign or move them to the pitch.");
             return;
         }
 
-        // Ensure Captain and Vice-Captain are different players
         if (captainId && viceCaptainId && captainId === viceCaptainId) {
             alert("Captain and Vice-Captain must be different players.");
             return;
         }
 
-        // Prepare data to save, including the onPitch status
-        const playersToSave = selectedPlayers.map(p => ({ id: p.id, onPitch: p.onPitch }));
+        // Save players with their onPitch status
+        const playersToSave = selectedPlayers.filter(Boolean).map(p => ({ id: p.id, onPitch: p.onPitch }));
 
         setUserData({
             ...userData,
-            players: playersToSave, // Save the updated players array with onPitch status
+            players: playersToSave, // Save the updated players array (with onPitch)
             captainId: captainId,
             viceCaptainId: viceCaptainId,
-            // Budget is not changed on MyTeam page, it's fixed by initial pick or transfers
-            // but we pass it along to ensure other fields are not lost.
             budget: userData.budget
         });
         alert("Lineup changes saved!");
@@ -244,85 +398,17 @@ function MyTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, curr
 
 
     const handleResetTeam = useCallback(() => {
-        // This reset should revert to the last saved state from userData
         if (userData && allPlayers.length > 0) {
-            const initialSelection = userData.players.map(playerData => {
+            const initialSelection = userData.players.map(playerData => { // userData.players now stores {id, onPitch}
                 const player = allPlayers.find(p => p.id === playerData.id);
-                return player ? { ...player, onPitch: playerData.onPitch } : null;
+                return player ? { ...player, onPitch: playerData.onPitch } : null; // Re-add onPitch from loaded data
             }).filter(Boolean);
             setSelectedPlayers(initialSelection);
-            setCaptainId(userData.captainId || null);
-            setViceCaptainId(userData.viceCaptainId || null);
-            setPlayerToSubstitute(null); // Reset substitution state
+            setSubstitutionMode(false);
+            setPlayerToSubstitute(null);
             alert("Team reset to last saved state.");
         }
     }, [userData, allPlayers]);
-
-
-    // Function to handle player clicks specifically for substitution
-    const handlePlayerClickForSubstitution = useCallback((clickedPlayer) => {
-        if (!clickedPlayer) {
-            alert("Please select a player to substitute.");
-            return;
-        }
-
-        if (!playerToSubstitute) {
-            // First player selected for substitution
-            setPlayerToSubstitute(clickedPlayer);
-            alert(`Selected ${clickedPlayer.name} for substitution. Now select the player to swap with.`);
-        } else {
-            // Second player selected for substitution (perform the swap)
-            if (playerToSubstitute.id === clickedPlayer.id) {
-                alert("Cannot swap a player with themselves. Select a different player.");
-                setPlayerToSubstitute(null); // Deselect
-                return;
-            }
-
-            // NEW: Enforce same position swap
-            if (playerToSubstitute.position !== clickedPlayer.position) {
-                alert(`Cannot swap a ${playerToSubstitute.position} with a ${clickedPlayer.position}. Only players of the same position can be swapped.`);
-                setPlayerToSubstitute(null); // Deselect
-                return;
-            }
-
-            // Determine if the first player is on pitch and second on bench, or vice-versa
-            const player1OnPitch = selectedPlayers.some(p => p.id === playerToSubstitute.id && p.onPitch);
-            const player2OnPitch = selectedPlayers.some(p => p.id === clickedPlayer.id && p.onPitch);
-
-            // Rule: One must be on pitch, the other on bench
-            const isValidSwap = (player1OnPitch && !player2OnPitch) || (!player1OnPitch && player2OnPitch);
-
-            if (!isValidSwap) {
-                alert("Invalid substitution: One player must be on the pitch and the other on the bench.");
-                setPlayerToSubstitute(null); // Reset selection
-                return;
-            }
-
-            // Perform the swap by updating the 'onPitch' status
-            setSelectedPlayers(prevPlayers => {
-                return prevPlayers.map(p => {
-                    if (p.id === playerToSubstitute.id) {
-                        return { ...p, onPitch: !p.onPitch };
-                    }
-                    if (p.id === clickedPlayer.id) {
-                        return { ...p, onPitch: !p.onPitch };
-                    }
-                    return p;
-                });
-            });
-
-            // Reset captain/vice-captain if swapped player was one and moved to bench
-            if (captainId === playerToSubstitute.id && player1OnPitch) setCaptainId(null);
-            if (viceCaptainId === playerToSubstitute.id && player1OnPitch) setViceCaptainId(null);
-            if (captainId === clickedPlayer.id && player2OnPitch) setCaptainId(null);
-            if (viceCaptainId === clickedPlayer.id && player2OnPitch) setViceCaptainId(null);
-
-
-            // Reset substitution state
-            setPlayerToSubstitute(null); // Clear the first selected player
-            alert(`Successfully swapped ${playerToSubstitute.name} with ${clickedPlayer.name}!`);
-        }
-    }, [playerToSubstitute, selectedPlayers, captainId, viceCaptainId]);
 
 
     if (!userData || allPlayers.length === 0 || allTeams.length === 0 || allFixtures.length === 0) {
@@ -340,30 +426,36 @@ function MyTeam({ userData, allPlayers, allTeams, allFixtures, setUserData, curr
 
                     <SelectedTeamDisplay
                         selectedPlayers={selectedPlayers}
-                        onRemove={updateSelectedPlayersFromDisplay} // Removal is handled by MyTeam by updating onPitch
+                        onRemove={updateSelectedPlayersFromDisplay}
                         allTeams={allTeams}
                         allFixtures={allFixtures}
-                        onPlayerDrop={handlePlayerMoveInSquad} // Handle drag-drop for pitch/bench changes
+                        onPlayerDrop={handlePlayerMoveInSquad}
                         budget={currentBudgetRemaining}
-                        isInitialPick={false} // Always false for MyTeam
-                        onPositionClick={() => {}} // No position filter from empty slots on MyTeam
-                        allAvailablePlayers={allPlayers} // Not strictly needed for MyTeam, but doesn't hurt
-                        onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay} // For removals from SelectedTeamDisplay
+                        isInitialPick={false}
+                        onPositionClick={() => {}}
+                        allAvailablePlayers={allPlayers}
+                        onUpdateSelectedPlayers={updateSelectedPlayersFromDisplay}
                         onResetTeam={handleResetTeam}
                         captainId={captainId}
                         viceCaptainId={viceCaptainId}
                         onSetCaptain={handleSetCaptain}
                         onSetViceCaptain={handleSetViceCaptain}
-                        substitutionMode={!!playerToSubstitute} // True if a player is selected for substitution
+                        substitutionMode={substitutionMode}
                         playerToSubstitute={playerToSubstitute}
-                        onPlayerClickForSubstitution={handlePlayerClickForSubstitution}
-                        onToggleSubstitutionMode={() => setPlayerToSubstitute(null)} // Clicking "Exit Substitution Mode" if needed
+                        onPlayerClick={handlePlayerClick}
                     />
                     <ButtonContainer>
+                        <ActionButton
+                            onClick={handleToggleSubstitutionMode}
+                            style={{
+                                backgroundColor: substitutionMode ? '#e74c3c' : '#007bff', // Red when active, blue when inactive
+                            }}
+                        >
+                            {substitutionMode ? 'Exit Substitution Mode' : 'Enter Substitution Mode'}
+                        </ActionButton>
                         <ActionButton onClick={handleSaveLineupChanges}>
                             Save Your Team
                         </ActionButton>
-                        {/* Removed the dedicated "Substitute Players" button */}
                         <ActionButton onClick={handleResetTeam}>
                             Reset Lineup
                         </ActionButton>

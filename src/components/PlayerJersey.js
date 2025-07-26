@@ -3,11 +3,11 @@ import React, { useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useDrag, useDrop } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTimes, faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons'; // Removed faExchangeAlt
 
 const JerseyContainer = styled.div.withConfig({
   shouldForwardProp: (prop) =>
-    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage', 'isCaptain', 'isViceCaptain', 'isInitialPick', 'isPlayerToSubstitute'].includes(prop)
+    !['isDragging', 'isOver', 'isEmpty', 'isBench', 'jerseyImage', 'isCaptain', 'isViceCaptain', 'isInitialPick', 'isPlayerToSubstitute'].includes(prop) // Added isPlayerToSubstitute
 })`
     background-color: transparent;
     border-radius: 8px;
@@ -72,6 +72,12 @@ const JerseyContainer = styled.div.withConfig({
             font-size: 1.8em;
             color: rgba(255,255,255,0.8);
         }
+    `}
+
+    /* Styling for player selected for substitution */
+    ${props => props.isPlayerToSubstitute && `
+        border: 3px solid #007bff; /* Highlight blue for selected player */
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
     `}
 
     /* Jersey image as background (for players) */
@@ -206,94 +212,7 @@ const JerseyContainer = styled.div.withConfig({
         }
     }
 
-    /* Substitution button styling */
-    .substitution-button {
-        position: absolute;
-        top: -8px; /* Position relative to jersey container */
-        right: -8px; /* Position on the right */
-        background-color: #007bff; /* Blue color for substitution */
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        font-size: 0.9em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 10;
-        font-weight: bold;
-        box-shadow:
-            0 1.5px 0 rgba(0, 91, 187, 0.5),
-            0 3px 6px rgba(0, 0, 0, 0.2),
-            inset 0 0.5px 0 rgba(255, 255, 255, 0.5),
-            inset 0 -1.5px 0 rgba(0, 91, 187, 0.8);
-        transition: all 0.1s ease-out;
-
-        &:hover {
-            background-color: #0056b3;
-            transform: scale(1.05);
-        }
-        &:active {
-            transform: translateY(1px);
-            box-shadow:
-                0 0.5px 0 rgba(0, 91, 187, 0.5),
-                0 1px 2px rgba(0, 0, 0, 0.1),
-                inset 0 0px 0 rgba(255, 255, 255, 0.5),
-                inset 0 -0.5px 0 rgba(0, 91, 187, 0.8);
-        }
-    }
-
-
-    /* Styling for bench players (updated to match image_b76679.png) */
-    ${props => props.isBench && `
-        background-color: #2c3e50; /* Dark background for bench players */
-        border: 2px solid #34495e; /* Slightly lighter dark border */
-        color: white; /* White text for bench players */
-        width: 110px; /* Consistent size with pitch players */
-        height: 140px; /* Consistent size with pitch players */
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-
-        .jersey-image-bg {
-            background-size: 80%; /* Match pitch player jersey size */
-        }
-        .team-abbr, .player-cost {
-            background-color: rgba(0,0,0,0.8); /* Darker background for badges */
-            color: white;
-        }
-        .player-name-box, .fixture-and-badges-container { /* Apply new box styles to bench too */
-            background-color: rgba(0,0,0,0.8);
-            color: white;
-        }
-    `}
-
-    /* Styling for bench players during initial pick (if applicable, though usually no bench in initial pick) */
-    ${props => props.isBench && props.isInitialPick && `
-        width: 85px; /* Smaller for initial pick bench */
-        height: 110px;
-        .jersey-image-bg {
-            background-size: 70%;
-        }
-        .team-abbr, .player-cost {
-            font-size: 0.6em;
-            padding: 1px 4px;
-        }
-        .player-name-box {
-            font-size: 0.7em;
-        }
-        .fixture-and-badges-container {
-            font-size: 0.55em;
-        }
-    `}
-
-
-    /* NEW: Styling for player selected for substitution */
-    ${props => props.isPlayerToSubstitute && `
-        border: 3px solid #FFD700; /* Gold border to highlight selection */
-        box-shadow: 0 0 15px rgba(255,215,0,0.8);
-        transform: scale(1.05);
-    `}
+    /* Removed Substitution button styling */
 `;
 
 /* NEW: Inline Captain/Vice-Captain Badges - MODIFIED STYLING AND ORDER */
@@ -384,7 +303,7 @@ const SubBadge = styled.div`
 `;
 
 
-function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) {
+function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBench = false, onPositionClick, playerFixtures, isCaptain, isViceCaptain, onSetCaptain, onSetViceCaptain, isInitialPick, canRemove, substitutionMode, playerToSubstitute, onPlayerClick, isPlayerToSubstitute }) {
     const itemType = 'player';
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -398,8 +317,8 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
     const [{ isOver }, drop] = useDrop(() => ({
         accept: itemType,
         drop: (draggedItem) => {
-            if (draggedItem.player.id === player?.id) return; // Dropping onto self (do nothing)
-            // Pass the target player (or null if empty slot) and its position type
+            // When dropping, call onMovePlayer with draggedItem.player and the current player (target)
+            // If dropping on an empty slot, 'player' will be null, and 'position' will be the slot type.
             onMovePlayer(draggedItem.player, player, position);
         },
         collect: (monitor) => ({
@@ -423,8 +342,7 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
         return nameParts[0];
     }, [player]);
 
-    const isPlayerSelectedForSubstitution = player && playerToSubstitute && player.id === playerToSubstitute.id;
-
+    // Removed isPlayerSelectedForSubstitution
     const displayFixture = playerFixtures ? playerFixtures : 'N/A';
 
     return (
@@ -438,13 +356,14 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
             onClick={(e) => {
                 e.stopPropagation(); // Prevent clicks from bubbling up to parent containers
 
-                if (!player) { // Clicked an empty slot
+                if (substitutionMode && player) { // If in substitution mode and clicked on a player (not empty slot)
+                    onPlayerClick(player); // Use the new onPlayerClick for substitution logic
+                } else if (!player) { // Clicked an empty slot, not in substitution mode
                     onPositionClick(position); // This is typically for filtering the player list
                 }
-                // If not empty, substitution is handled by the button, not general click
             }}
             isInitialPick={isInitialPick}
-            isPlayerToSubstitute={isPlayerSelectedForSubstitution}
+            isPlayerToSubstitute={isPlayerToSubstitute}
         >
             {player ? (
                 <>
@@ -473,19 +392,7 @@ function PlayerJersey({ player, position, onRemove, onMovePlayer, allTeams, isBe
                             </button>
                         )}
 
-                        {/* Substitution button on PlayerJersey - Only show if NOT initial pick */}
-                        {!isInitialPick && (
-                            <button
-                                className="substitution-button"
-                                onClick={(e) => {
-                                    e.stopPropagation(); // Prevent triggering parent onClick
-                                    onPlayerClickForSubstitution(player); // Directly trigger substitution logic
-                                }}
-                                style={{ backgroundColor: isPlayerSelectedForSubstitution ? '#FFD700' : '#007bff' }} // Highlight selected player's sub button
-                            >
-                                <FontAwesomeIcon icon={faExchangeAlt} />
-                            </button>
-                        )}
+                        {/* Removed Substitution button on PlayerJersey */}
 
                         {isBench && !isInitialPick && <SubBadge>SUB</SubBadge>}
 

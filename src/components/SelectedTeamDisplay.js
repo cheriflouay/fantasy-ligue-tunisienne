@@ -262,9 +262,9 @@ const FormationSelector = styled.div`
 `;
 
 const FormationButton = styled.button`
-    background-color: ${props => props.active ? '#6a11cb' : '#33004a'};
+    background-color: ${props => props.$active ? '#6a11cb' : '#33004a'}; /* Changed to $active */
     color: white;
-    border: 1px solid ${props => props.active ? '#884dff' : '#4a005c'};
+    border: 1px solid ${props => props.$active ? '#884dff' : '#4a005c'}; /* Changed to $active */
     padding: 8px 15px;
     border-radius: 5px;
     font-size: 0.9em;
@@ -273,7 +273,7 @@ const FormationButton = styled.button`
     transition: all 0.2s ease;
 
     &:hover {
-        background-color: ${props => props.active ? '#5a009a' : '#4a005c'};
+        background-color: ${props => props.$active ? '#5a009a' : '#4a005c'}; /* Changed to $active */
         transform: translateY(-1px);
     }
 `;
@@ -320,7 +320,7 @@ const EmptyDropTarget = ({ positionType, onPlayerDrop, onPositionClick }) => {
 };
 
 
-function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, onUpdateSelectedPlayers, captainId, viceCaptainId, onSetCaptain, onSetViceCaptain, substitutionMode, playerToSubstitute, onPlayerClickForSubstitution, onToggleSubstitutionMode }) {
+function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures, onPlayerDrop, isInitialPick, onPositionClick, onUpdateSelectedPlayers, captainId, viceCaptainId, onSetCaptain, onSetViceCaptain, substitutionMode, playerToSubstitute, onPlayerClick }) {
   const [startingXI, setStartingXI] = useState({
     Goalkeeper: [],
     Defender: [],
@@ -362,156 +362,148 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
   // Helper to distribute players based on a given formation key or fixed 15-player display
   // selectedPlayers now contains objects like { id: playerId, onPitch: boolean }
   const distributePlayersByFormation = useCallback((allPlayersInSquad, formationKey, isInitialPickMode) => {
-    const newPitch = { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [], Extra: [] };
+    const newPitch = { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [] };
     let newBench = [];
-    const usedPlayerIds = new Set();
+    const formationRules = FORMATION_RULES[formationKey];
 
-    if (isInitialPickMode) { // For Initial Pick (PickTeam) and Transfers page
-        // In this mode, all 15 players are visually on the "pitch"
-        // We assume all players in allPlayersInSquad are intended to be displayed.
-        // For initial pick, all players are considered "onPitch" for display purposes.
-        const playersByPos = {
-            'Goalkeeper': allPlayersInSquad.filter(p => p && p.position === 'Goalkeeper').sort((a, b) => a.id - b.id),
-            'Defender': allPlayersInSquad.filter(p => p && p.position === 'Defender').sort((a, b) => a.id - b.id),
-            'Midfielder': allPlayersInSquad.filter(p => p && p.position === 'Midfielder').sort((a, b) => a.id - b.id),
-            'Forward': allPlayersInSquad.filter(p => p && p.position === 'Forward').sort((a, b) => a.id - b.id),
-        };
+    if (!formationRules) {
+        console.error(`Invalid formation key: ${formationKey}`);
+        return { pitch: { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [] }, bench: [] };
+    }
 
-        // Fill Goalkeeper (ensure two slots always)
-        for (let i = 0; i < 2; i++) {
-            if (playersByPos.Goalkeeper[i]) {
-                newPitch.Goalkeeper.push(playersByPos.Goalkeeper[i]);
-                usedPlayerIds.add(playersByPos.Goalkeeper[i].id);
+    // For initial pick mode (PickTeam/Transfers), override the pitch/bench logic
+    // to show all 15 players on the pitch.
+    if (isInitialPickMode) {
+        const allPlayersSorted = [...allPlayersInSquad].sort((a, b) => a.id - b.id); // Sort for consistent display
+        const initialPitch = { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [], Extra: [] };
+
+        // Distribute to pitch categories for visual grouping
+        allPlayersSorted.forEach(p => {
+            if (p.position === 'Goalkeeper' && initialPitch.Goalkeeper.length < 2) {
+                initialPitch.Goalkeeper.push(p);
+            } else if (p.position === 'Defender' && initialPitch.Defender.length < 5) {
+                initialPitch.Defender.push(p);
+            } else if (p.position === 'Midfielder' && initialPitch.Midfielder.length < 5) {
+                initialPitch.Midfielder.push(p);
+            } else if (p.position === 'Forward' && initialPitch.Forward.length < 3) {
+                initialPitch.Forward.push(p);
             } else {
-                newPitch.Goalkeeper.push(null);
+                initialPitch.Extra.push(p);
             }
-        }
-
-        // Fill other positions as much as possible for display purposes
-        ['Defender', 'Midfielder', 'Forward'].forEach(posType => {
-            const playersForThisPos = playersByPos[posType].filter(p => !usedPlayerIds.has(p.id));
-            playersForThisPos.forEach(player => {
-                newPitch[posType].push(player);
-                usedPlayerIds.add(player.id);
-            });
         });
 
-        // Add any remaining players (from any position not yet used) to the 'Extra' category
-        const remainingPlayers = allPlayersInSquad.filter(p => p && !usedPlayerIds.has(p.id)).sort((a, b) => a.id - b.id);
-        newPitch.Extra = remainingPlayers;
-
-        // Ensure total pitch players is 15 by adding nulls if needed, distributing across categories if possible
-        let currentPitchCount = newPitch.Goalkeeper.filter(Boolean).length +
-                               newPitch.Defender.filter(Boolean).length +
-                               newPitch.Midfielder.filter(Boolean).length +
-                               newPitch.Forward.filter(Boolean).length +
-                               newPitch.Extra.filter(Boolean).length;
-
-        // Fill empty slots up to 15, prioritizing position types for a structured look
-        while (currentPitchCount < maxSquadSize) {
-            if (newPitch.Goalkeeper.length < 2) {
-                newPitch.Goalkeeper.push(null);
-            } else if (newPitch.Defender.length < 5) {
-                newPitch.Defender.push(null);
-            } else if (newPitch.Midfielder.length < 5) {
-                newPitch.Midfielder.push(null);
-            } else if (newPitch.Forward.length < 3) {
-                newPitch.Forward.push(null);
-            } else {
-                newPitch.Extra.push(null); // Catch-all for any additional slots up to 15
-            }
-            currentPitchCount++;
+        // Fill remaining slots with nulls to reach 15 total
+        let currentTotal = Object.values(initialPitch).flat().filter(Boolean).length;
+        while (currentTotal < maxSquadSize) {
+            if (initialPitch.Goalkeeper.length < 2) initialPitch.Goalkeeper.push(null);
+            else if (initialPitch.Defender.length < 5) initialPitch.Defender.push(null);
+            else if (initialPitch.Midfielder.length < 5) initialPitch.Midfielder.push(null);
+            else if (initialPitch.Forward.length < 3) initialPitch.Forward.push(null);
+            else initialPitch.Extra.push(null);
+            currentTotal++;
         }
 
-        newBench = []; // Bench is empty in this mode
+        return { pitch: initialPitch, bench: [] }; // No bench in initial pick mode
     } else {
         // For My Team page (isInitialPick=false), use dynamic formation rules and bench
-        const formationRules = FORMATION_RULES[formationKey];
-        if (!formationRules) {
-            console.error(`Invalid formation key: ${formationKey}`);
-            return { pitch: { Goalkeeper: [], Defender: [], Midfielder: [], Forward: [] }, bench: [] };
+
+        // 1. Separate players based on their 'onPitch' status from the incoming selectedPlayers prop
+        let onPitchPlayers = allPlayersInSquad.filter(p => p && p.onPitch);
+        let onBenchPlayers = allPlayersInSquad.filter(p => p && !p.onPitch);
+
+        // Sort players within their groups for consistent display
+        onPitchPlayers.sort((a, b) => a.id - b.id);
+        // onBenchPlayers.sort((a, b) => a.id - b.id); // REMOVED: This line caused bench reordering issues
+
+        // Initialize pitch positions with nulls based on formation rules
+        for (const posType in formationRules) {
+            if (posType !== 'Bench') { // Exclude 'Bench' from pitch positions
+                newPitch[posType] = Array(formationRules[posType]).fill(null);
+            }
         }
 
-        // Separate players based on their 'onPitch' status
-        const playersOnPitch = allPlayersInSquad.filter(p => p && p.onPitch);
-        const playersOnBench = allPlayersInSquad.filter(p => p && !p.onPitch);
-
-        // Create mutable copies for internal manipulation
-        let mutablePlayersOnPitch = [...playersOnPitch];
-        let mutablePlayersOnBench = [...playersOnBench];
-
-        // 1. Fill pitch positions with players already marked as onPitch
+        // 2. Fill pitch positions with players who are already marked as onPitch
+        // Prioritize filling the correct position slots first
         ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].forEach(posType => {
-            const needed = formationRules[posType];
-            const playersForThisPosOnPitch = mutablePlayersOnPitch.filter(p => p.position === posType).sort((a, b) => a.id - b.id);
-
-            // Take up to 'needed' players for this position from those already on pitch
-            for (let i = 0; i < needed; i++) {
-                if (playersForThisPosOnPitch[i]) {
-                    newPitch[posType].push(playersForThisPosOnPitch[i]);
-                    // Remove from mutablePlayersOnPitch to avoid double-counting/re-adding
-                    mutablePlayersOnPitch = mutablePlayersOnPitch.filter(p => p.id !== playersForThisPosOnPitch[i].id);
-                } else {
-                    newPitch[posType].push(null); // Fill with null if no player
-                }
+            const playersForThisPos = onPitchPlayers.filter(p => p.position === posType);
+            for (let i = 0; i < playersForThisPos.length && i < newPitch[posType].length; i++) {
+                newPitch[posType][i] = playersForThisPos[i];
             }
         });
 
-        // 2. If any pitch position still has nulls, try to fill from bench (same position first)
+        // 3. Identify any 'onPitch' players who couldn't fit the current formation's pitch slots
+        // (e.g., too many defenders for a 3-defender formation). These become bench candidates.
+        let excessPitchPlayers = [];
         ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].forEach(posType => {
-            // Find how many more players are needed for this position on the pitch
-            const currentlyOnPitch = newPitch[posType].filter(Boolean).length;
-            const stillNeeded = formationRules[posType] - currentlyOnPitch;
+            const currentPitchCount = newPitch[posType].filter(Boolean).length;
+            const playersOriginallyOnPitchForThisPos = onPitchPlayers.filter(p => p.position === posType);
+            for (let i = currentPitchCount; i < playersOriginallyOnPitchForThisPos.length; i++) {
+                excessPitchPlayers.push(playersOriginallyOnPitchForThisPos[i]);
+            }
+        });
 
-            for (let i = 0; i < stillNeeded; i++) {
-                const benchPlayerOfSamePosIndex = mutablePlayersOnBench.findIndex(p => p.position === posType);
-                if (benchPlayerOfSamePosIndex !== -1) {
-                    const playerToMove = mutablePlayersOnBench.splice(benchPlayerOfSamePosIndex, 1)[0];
-                    // Find the first null slot in newPitch[posType] and replace it
-                    const nullIndex = newPitch[posType].indexOf(null);
-                    if (nullIndex !== -1) {
-                        newPitch[posType][nullIndex] = playerToMove;
-                    } else {
-                        // This case implies an error in logic or formation rules if null not found but needed
-                        newPitch[posType].push(playerToMove); // Fallback, push if no null
+        // Combine all candidates for the bench: players originally on bench + excess from pitch
+        // Preserve original order of onBenchPlayers, then add excessPitchPlayers
+        let combinedBenchCandidates = [...onBenchPlayers, ...excessPitchPlayers];
+
+        // 4. Fill any remaining null slots on the pitch from the combined bench candidates, prioritizing by position
+        ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].forEach(posType => {
+            for (let i = 0; i < newPitch[posType].length; i++) {
+                if (newPitch[posType][i] === null) {
+                    const indexInBench = combinedBenchCandidates.findIndex(p => p && p.position === posType);
+                    if (indexInBench !== -1) {
+                        newPitch[posType][i] = combinedBenchCandidates.splice(indexInBench, 1)[0];
                     }
-                } else {
-                    break; // No more players of this position on bench
                 }
             }
         });
 
-        // 3. Collect remaining players for the bench
-        // Remaining players from original 'onPitch' (if more than needed for formation)
-        // and remaining players from 'onBench'
-        let finalBenchPlayers = [...mutablePlayersOnPitch, ...mutablePlayersOnBench];
+        // 5. Construct the final bench from any remaining players in combinedBenchCandidates
+        // This is the crucial part for Rule 2: GKP first, then user-defined order for others.
 
-        // Sort bench players: Goalkeeper first, then others by ID
-        const benchGoalkeepers = finalBenchPlayers.filter(p => p.position === 'Goalkeeper').sort((a, b) => a.id - b.id);
-        const benchOutfieldPlayers = finalBenchPlayers.filter(p => p.position !== 'Goalkeeper').sort((a, b) => a.id - b.id);
+        let finalBenchOrdered = [];
+        // Extract Goalkeepers from combinedBenchCandidates
+        const goalkeepers = combinedBenchCandidates.filter(p => p && p.position === 'Goalkeeper');
+        // Extract outfield players from combinedBenchCandidates, maintaining their relative order
+        const outfieldPlayers = combinedBenchCandidates.filter(p => p && p.position !== 'Goalkeeper');
 
-        // Ensure GKP is always the first bench player, followed by others.
-        newBench = [];
-        if (benchGoalkeepers.length > 0) {
-            newBench.push(benchGoalkeepers[0]); // First GKP
-            // Add remaining GKs to outfield players for sorting
-            benchOutfieldPlayers.push(...benchGoalkeepers.slice(1));
-            benchOutfieldPlayers.sort((a,b) => a.id - b.id); // Re-sort outfield players including any extra GKs
+        // Add the first Goalkeeper to the bench if available
+        if (goalkeepers.length > 0) {
+            finalBenchOrdered.push({ ...goalkeepers[0], onPitch: false });
         }
-        newBench.push(...benchOutfieldPlayers);
 
+        // Add the rest of the outfield players, maintaining their order
+        finalBenchOrdered.push(...outfieldPlayers.map(p => ({ ...p, onPitch: false })));
 
-        // Ensure bench has correct number of empty slots if less than max
+        // If there are more goalkeepers, add them at the end of the outfield players
+        // (after the first GKP, the rest are treated as regular outfield players for sorting purposes)
+        if (goalkeepers.length > 1) {
+            finalBenchOrdered.push(...goalkeepers.slice(1).map(p => ({ ...p, onPitch: false })));
+        }
+
+        newBench = finalBenchOrdered; // Assign the newly ordered bench
+
+        // Ensure bench has exactly 4 players (fill with nulls if needed, or truncate)
+        newBench = newBench.slice(0, formationRules.Bench);
         while (newBench.length < formationRules.Bench) {
             newBench.push(null);
         }
 
-        // Trim bench if it exceeds max bench size
-        newBench = newBench.slice(0, formationRules.Bench);
     }
 
+    // --- DEBUGGING LOGS ---
+    console.log("--- distributePlayersByFormation Output ---");
+    console.log("Formation Key:", formationKey);
+    console.log("Is Initial Pick Mode:", isInitialPickMode);
+    console.log("Input selectedPlayers (onPitch status):", allPlayersInSquad.map(p => ({ id: p.id, onPitch: p.onPitch })));
+    console.log("Output Pitch:", newPitch);
+    console.log("Output Bench:", newBench);
+    console.log("-----------------------------------------");
+    // --- END DEBUGGING LOGS ---
+
     return { pitch: newPitch, bench: newBench };
-  }, []);
+  }, [maxSquadSize]);
+
 
   // Helper to get current pitch composition (counts of each position on pitch)
   const getPitchComposition = useCallback((currentPitch) => {
@@ -639,7 +631,7 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                 <FormationButton
                     key={key}
                     onClick={() => handleFormationSelection(key)}
-                    active={currentFormationKey === key}
+                    $active={currentFormationKey === key} /* Changed to $active */
                 >
                     {key}
                 </FormationButton>
@@ -679,10 +671,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetViceCaptain={onSetViceCaptain} // Passed from parent
               isInitialPick={isInitialPick} // Passed from parent
               canRemove={isInitialPick} // Can remove on Transfers/Initial Pick page
-              substitutionMode={substitutionMode} // Passed from parent
-              playerToSubstitute={playerToSubstitute} // Passed from parent
-              onPlayerClickForSubstitution={onPlayerClickForSubstitution} // Passed from parent
-              onToggleSubstitutionMode={onToggleSubstitutionMode} // Passed from parent
+              substitutionMode={substitutionMode}
+              playerToSubstitute={playerToSubstitute}
+              onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+              isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
             />
           ))}
         </PositionRow>
@@ -704,11 +696,11 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetCaptain={onSetCaptain}
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
-              canRemove={isInitialPick}
+              canRemove={isInitialPick} // Can remove on Transfers/Initial Pick page
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
-              onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode}
+              onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+              isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
             />
           ))}
         </PositionRow>
@@ -730,11 +722,11 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetCaptain={onSetCaptain}
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
-              canRemove={isInitialPick}
+              canRemove={isInitialPick} // Can remove on Transfers/Initial Pick page
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
-              onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode}
+              onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+              isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
             />
           ))}
         </PositionRow>
@@ -756,11 +748,11 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
               onSetCaptain={onSetCaptain}
               onSetViceCaptain={onSetViceCaptain}
               isInitialPick={isInitialPick}
-              canRemove={isInitialPick}
+              canRemove={isInitialPick} // Can remove on Transfers/Initial Pick page
               substitutionMode={substitutionMode}
               playerToSubstitute={playerToSubstitute}
-              onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-              onToggleSubstitutionMode={onToggleSubstitutionMode}
+              onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+              isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
             />
           ))}
         </PositionRow>
@@ -784,10 +776,10 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                         onSetViceCaptain={() => {}} // Dummy function
                         isInitialPick={isInitialPick}
                         canRemove={isInitialPick} // Can remove on Transfers/Initial Pick page
-                        substitutionMode={false} // Always false for Transfers/Initial Pick page
-                        playerToSubstitute={null} // Always null for Transfers/Initial Pick page
-                        onPlayerClickForSubstitution={() => {}} // Dummy function
-                        onToggleSubstitutionMode={() => {}} // Dummy function
+                        substitutionMode={substitutionMode}
+                        playerToSubstitute={playerToSubstitute}
+                        onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+                        isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
                     />
                 ))}
             </PositionRow>
@@ -818,6 +810,7 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                      'SUB'}
                   </BenchPositionLabel>
                   <PlayerJersey
+                    key={player.id} /* Ensure key is player.id for consistent rendering */
                     player={player}
                     position={player.position} // Pass actual position for bench player
                     onRemove={onRemove}
@@ -834,8 +827,8 @@ function SelectedTeamDisplay({ selectedPlayers, onRemove, allTeams, allFixtures,
                     canRemove={false} // Cannot remove directly from bench in MyTeam
                     substitutionMode={substitutionMode}
                     playerToSubstitute={playerToSubstitute}
-                    onPlayerClickForSubstitution={onPlayerClickForSubstitution}
-                    onToggleSubstitutionMode={onToggleSubstitutionMode}
+                    onPlayerClick={onPlayerClick} // Changed to new handlePlayerClick
+                    isPlayerToSubstitute={player && playerToSubstitute && player.id === playerToSubstitute.id}
                   />
                 </BenchPlayerWrapper>
               ) : (

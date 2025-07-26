@@ -32,7 +32,7 @@ const NavItem = styled.button`
         transform: translateY(-2px);
     }
 
-    ${props => props.active && `
+    ${props => props.$active && ` /* Changed to $active */
         color: #FFD700; /* Gold color for active link */
         &::after {
             content: '';
@@ -71,39 +71,39 @@ function Navigation({ setActivePage, activePage, isInitialTeamSaved, onLogout })
         <NavigationContainer>
             <NavItem
                 onClick={() => setActivePage('dashboard')}
-                active={activePage === 'dashboard'}
+                $active={activePage === 'dashboard'} /* Changed to $active */
             >
                 Dashboard
             </NavItem>
             <NavItem
                 onClick={() => setActivePage('myTeam')}
-                active={activePage === 'myTeam'}
+                $active={activePage === 'myTeam'} /* Changed to $active */
                 disabled={!isInitialTeamSaved} /* Disable if initial team not saved */
             >
                 My Team
             </NavItem>
             <NavItem
                 onClick={() => setActivePage('transfers')}
-                active={activePage === 'transfers'}
+                $active={activePage === 'transfers'} /* Changed to $active */
                 disabled={!isInitialTeamSaved} /* Disable if initial team not saved */
             >
                 Transfers
             </NavItem>
             <NavItem
                 onClick={() => setActivePage('fixtures')}
-                active={activePage === 'fixtures'}
+                $active={activePage === 'fixtures'} /* Changed to $active */
             >
                 Fixtures
             </NavItem>
             <NavItem
                 onClick={() => setActivePage('standings')}
-                active={activePage === 'standings'}
+                $active={activePage === 'standings'} /* Changed to $active */
             >
                 Standings
             </NavItem>
             {/* <NavItem
                 onClick={() => setActivePage('playerDetails')}
-                active={activePage === 'playerDetails'}
+                $active={activePage === 'playerDetails'}
             >
                 Player Details
             </NavItem> */}
